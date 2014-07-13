@@ -1,0 +1,7 @@
+export RTE_TARGET=i686-default-linuxapp-gcc
+export RTE_SDK=/home/rajnesh/Desktop/dpdk-1.6.0r2
+
+
+mkdir -p /mnt/huge
+mount -t hugetlbfs nodev /mnt/huge
+echo 64 > /sys/devices/system/node/node0/hugepages/hugepages-2048kB/nr_hugepages
