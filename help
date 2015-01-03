@@ -12,4 +12,4 @@ echo 64 > /sys/kernel/mm/hugepages/hugepages-4096kB/nr_hugepages
 
 # without huge page l2fwd will not work.
 
-./build/l2fwd -c 0xf -n 4 -- -p 0x3
+./build/tcp_stack -c 0xf -n 4 -- -p 0x3
