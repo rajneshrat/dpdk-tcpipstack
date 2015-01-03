@@ -1,3 +1,7 @@
-int tcpchecksumerror = 0;
+#ifndef __TCP_IN_H__
+#define __TCP_IN_H__
+extern int tcpchecksumerror;
 
-int tcpnopcb = 0;
+extern int tcpnopcb;
+
+#endif

@@ -315,9 +315,14 @@ l2fwd_main_loop(void)
 
 	lcore_id = rte_lcore_id();
 	qconf = &lcore_queue_conf[lcore_id];
-
-	if (qconf->n_rx_port == 0) {
+	if ((qconf->n_rx_port == 0) && (lcore_id == 2)) {
 		RTE_LOG(INFO, L2FWD, "lcore %u has nothing to do\n", lcore_id);
+      char ip[4];
+      ip[0] = '172';
+      ip[1] = '16';
+      ip[2] = '176';
+      ip[3] = '10';
+      init_socket_example(23, ip); 
 		return;
 	}
 
@@ -597,6 +602,8 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 	}
 }
 
+void init_socket_example(int port, char *ip);
+
 int
 MAIN(int argc, char **argv)
 {
@@ -608,6 +615,7 @@ MAIN(int argc, char **argv)
 	uint8_t portid, last_port;
 	unsigned lcore_id, rx_lcore_id;
 	unsigned nb_ports_in_mask = 0;
+
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);

@@ -42,9 +42,10 @@ include $(RTE_SDK)/mk/rte.vars.mk
 APP = l2fwd
 
 # all source are stored in SRCS-y
-SRCS-y := main.c arp.c etherin.c ip.c tcp_in.c tcp_tcb.c
+SRCS-y := main.c arp.c etherin.c ip.c tcp_in.c tcp_tcb.c tcp_states.c socket_interface.c socket_tester.c 
 
-CFLAGS += -O3
+#CFLAGS += -O3
+CFLAGS += -g
 #CFLAGS += $(WERROR_FLAGS)
 
 include $(RTE_SDK)/mk/rte.extapp.mk

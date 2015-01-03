@@ -29,13 +29,16 @@ socket_bind(int identifier, struct sock_addr *serv_addr)
       ptcb->ipv4_dest[i] = serv_addr->ip[i];
    }
    ptcb->dport = serv_addr->port;
-   ptcb->state = TCP_LISTENING;
+   ptcb->state = LISTENING;
    return 0;
 }
 
 int
 socket_listen(int identifier, int queue_len)
 {
+   struct tcb *ptcb;
+
+   ptcb = get_tcb_by_identifier(identifier);
    // not implemented yet.
    return 0; //SUCCESS
 }
@@ -43,19 +46,19 @@ socket_listen(int identifier, int queue_len)
 int
 socket_accept(int ser_id, struct sock_addr *client_addr)
 {
-   struct tcb *ptcb;
-   struct tcb *new_ptcb;
+   struct tcb *ptcb = NULL;
+   struct tcb *new_ptcb = NULL;
    
+   ptcb = get_tcb_by_identifier(ser_id);
    if(ptcb->WaitingOnAccept) {
       return 0;
       // don't allow multiple accepts hold on same socket.
    }
-   ptcb = get_tcb_by_identifier(ser_id);
-   new_ptcb = alloc_tcb();
+   ptcb->state = LISTENING;
    pthread_mutex_lock(&(ptcb->mutex));
    ptcb->WaitingOnAccept = 1;
-   ptcb->newpTcbOnAccept = new_ptcb;
    pthread_cond_wait(&(ptcb->condAccept), &(ptcb->mutex));
+   new_ptcb = ptcb->newpTcbOnAccept;
    ptcb->WaitingOnAccept = 0;
    pthread_mutex_unlock(&(ptcb->mutex));
    

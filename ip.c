@@ -13,6 +13,7 @@ ip_in(struct rte_mbuf *mbuf)
          sizeof(struct ether_hdr));
    switch(hdr->next_proto_id) {
       case IPPROTO_TCP : printf("tcp packet\n");
+         tcp_in(mbuf);
          break;
       default: break ;
    } 

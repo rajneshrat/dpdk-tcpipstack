@@ -7,20 +7,11 @@
 #include <stdio.h>
 #include "tcp_in.h"
 #include "tcp_tcb.h"
-#define TCP_STATES 1
+#include "tcp_states.h"
 
-struct tcb* findtcb(struct rte_mbuf *mbuf)
-{
+int tcpchecksumerror;
+int tcpnopcb;
 
-}
-
-typedef int (tcpinstate)(struct tcb *, struct rte_mbuf*);
-
-tcpinstate *tcpswitch[TCP_STATES] = { 
-
-
-
-};
 
 int tcpok(struct tcb *ptcb, struct rte_mbuf *mbuf)
 {
@@ -41,14 +32,17 @@ int tcp_in(struct rte_mbuf *mbuf)
       ++tcpchecksumerror;
       return -1;
    }  
-   ptcb = findtcb(mbuf);
-   if(ptcb = NULL) {
+   struct tcp_hdr *ptcphdr = (struct tcp_hdr *) ( rte_pktmbuf_mtod(mbuf, unsigned char *) + 
+         sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr)); 
+   ptcb = findtcb(ptcphdr);
+   if(ptcb == NULL) {
       ++tcpnopcb;
       rte_pktmbuf_free(mbuf);
       return -1;
    }
    if(tcpok(ptcb, mbuf)) {
-      tcpswitch[ptcb->tcp_state](ptcb, mbuf);
+      tcpswitch[ptcb->state](ptcb, mbuf);
+      //(tcpswitch[1])(ptcb, mbuf);
    }
    else {
       sendack(ptcb, mbuf);
