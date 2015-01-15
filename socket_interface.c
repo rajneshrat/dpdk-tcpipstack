@@ -25,9 +25,7 @@ socket_bind(int identifier, struct sock_addr *serv_addr)
    if(ptcb == NULL) {
       return -1; // use enum here
    }
-   for(i=0;i<4;i++) {
-      ptcb->ipv4_dest[i] = serv_addr->ip[i];
-   }
+   ptcb->ipv4_dst = serv_addr->ip;
    ptcb->dport = serv_addr->port;
    ptcb->state = LISTENING;
    return 0;

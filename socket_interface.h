@@ -1,8 +1,11 @@
 #ifndef __SOCKET_INTERFACE_H__
 #define __SOCKET_INTERFACE_H__
+#include <sys/types.h>
+#include <inttypes.h>
+
 struct sock_addr {
    int port;
-   char ip[4];
+   uint32_t ip;
 
 };
 

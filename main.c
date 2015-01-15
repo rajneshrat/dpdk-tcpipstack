@@ -278,6 +278,26 @@ l2fwd_send_packet(struct rte_mbuf *m, uint8_t port)
 	return 0;
 }
 
+struct rte_mbuf *get_mbuf()
+{
+   struct rte_mbuf *mbuf = NULL;   
+   mbuf = rte_pktmbuf_alloc(l2fwd_pktmbuf_pool);
+   return mbuf;
+}
+
+int
+send_packet_out(struct rte_mbuf *mbuf, int port)
+{
+   struct rte_mbuf *mbuf_arr[1];
+   mbuf_arr[0] = mbuf;
+ //  mbuf->pkt.next = NULL;
+  // mbuf->pkt.nb_segs = 1;
+ //  mbuf->pkt.data_len = 0;
+ //  mbuf->pkt.pkt_len = 20;
+   rte_eth_tx_burst(port, 0, &mbuf_arr[0], 1);
+   printf("packet sent\n");
+}
+
 static void
 l2fwd_simple_forward(struct rte_mbuf *m, unsigned portid)
 {

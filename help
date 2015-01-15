@@ -3,6 +3,8 @@
 export RTE_TARGET=i686-default-linuxapp-gcc
 export RTE_SDK=/home/rajnesh/Desktop/dpdk-1.6.0r2
 
+make
+
 umount /mnt/huge
 rm -rf /mnt/huge
 

@@ -27,7 +27,9 @@ tcp_listen(struct tcb *ptcb, struct rte_mbuf* mbuf)
    ptcb->newpTcbOnAccept = new_ptcb;
    pthread_mutex_lock(&(ptcb->mutex));
    pthread_cond_signal(&(ptcb->condAccept));
-   pthread_mutex_unlock(&(ptcb->mutex)); 
+   pthread_mutex_unlock(&(ptcb->mutex));
+   printf("sending ack\n");
+   sendack(new_ptcb);
    return 0;
 }
 int

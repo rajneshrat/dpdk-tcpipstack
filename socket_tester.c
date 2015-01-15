@@ -7,7 +7,7 @@ void init_socket_example(int port, char *ip)
    struct sock_addr addr;
    addr.port = port;
    for(i=0; i<4; i++) {
-      addr.ip[i] = ip[i];
+      addr.ip |= (ip[i] << i*8);
    }
    socket_bind(socket, &addr);
    socket_listen(socket, 5);
