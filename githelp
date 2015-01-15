@@ -1,0 +1,11 @@
+git add <new files>
+
+git commit <all added and modified files>
+
+git push 
+
+or
+
+git push -f -u origin master
+
+git difftool
