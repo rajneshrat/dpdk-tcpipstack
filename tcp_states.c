@@ -22,6 +22,8 @@ tcp_listen(struct tcb *ptcb, struct rte_mbuf* mbuf)
    new_ptcb = alloc_tcb(); 
    new_ptcb->state = SYN_RECV;
    new_ptcb->dport = ptcb->dport;
+   new_ptcb->ipv4_dst = ptcb->ipv4_dst;
+   new_ptcb->ipv4_src = ptcb->ipv4_src;
    // set src port;
    // set ips.
    ptcb->newpTcbOnAccept = new_ptcb;
