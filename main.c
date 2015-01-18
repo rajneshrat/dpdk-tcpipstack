@@ -186,97 +186,6 @@ struct l2fwd_port_statistics port_statistics[RTE_MAX_ETHPORTS];
 #define MAX_TIMER_PERIOD 86400 /* 1 day max */
 static int64_t timer_period = 10 * TIMER_MILLISECOND * 1000; /* default period is 10 seconds */
 
-/* Print out statistics on packets dropped */
-static void
-print_stats(void)
-{
-	uint64_t total_packets_dropped, total_packets_tx, total_packets_rx;
-	unsigned portid;
-
-	total_packets_dropped = 0;
-	total_packets_tx = 0;
-	total_packets_rx = 0;
-
-	const char clr[] = { 27, '[', '2', 'J', '\0' };
-	const char topLeft[] = { 27, '[', '1', ';', '1', 'H','\0' };
-
-		/* Clear screen and move to top left */
-	printf("%s%s", clr, topLeft);
-
-	printf("\nPort statistics ====================================");
-
-	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
-		/* skip disabled ports */
-		if ((l2fwd_enabled_port_mask & (1 << portid)) == 0)
-			continue;
-		printf("\nStatistics for port %u ------------------------------"
-			   "\nPackets sent: %24"PRIu64
-			   "\nPackets received: %20"PRIu64
-			   "\nPackets dropped: %21"PRIu64,
-			   portid,
-			   port_statistics[portid].tx,
-			   port_statistics[portid].rx,
-			   port_statistics[portid].dropped);
-
-		total_packets_dropped += port_statistics[portid].dropped;
-		total_packets_tx += port_statistics[portid].tx;
-		total_packets_rx += port_statistics[portid].rx;
-	}
-	printf("\nAggregate statistics ==============================="
-		   "\nTotal packets sent: %18"PRIu64
-		   "\nTotal packets received: %14"PRIu64
-		   "\nTotal packets dropped: %15"PRIu64,
-		   total_packets_tx,
-		   total_packets_rx,
-		   total_packets_dropped);
-	printf("\n====================================================\n");
-}
-
-/* Send the burst of packets on an output interface */
-static int
-l2fwd_send_burst(struct lcore_queue_conf *qconf, unsigned n, uint8_t port)
-{
-	struct rte_mbuf **m_table;
-	unsigned ret;
-	unsigned queueid =0;
-
-	m_table = (struct rte_mbuf **)qconf->tx_mbufs[port].m_table;
-
-	ret = rte_eth_tx_burst(port, (uint16_t) queueid, m_table, (uint16_t) n);
-	port_statistics[port].tx += ret;
-	if (unlikely(ret < n)) {
-		port_statistics[port].dropped += (n - ret);
-		do {
-			rte_pktmbuf_free(m_table[ret]);
-		} while (++ret < n);
-	}
-
-	return 0;
-}
-
-/* Enqueue packets for TX and prepare them to be sent */
-static int
-l2fwd_send_packet(struct rte_mbuf *m, uint8_t port)
-{
-	unsigned lcore_id, len;
-	struct lcore_queue_conf *qconf;
-
-	lcore_id = rte_lcore_id();
-
-	qconf = &lcore_queue_conf[lcore_id];
-	len = qconf->tx_mbufs[port].len;
-	qconf->tx_mbufs[port].m_table[len] = m;
-	len++;
-
-	/* enough pkts to be sent */
-	if (unlikely(len == MAX_PKT_BURST)) {
-		l2fwd_send_burst(qconf, MAX_PKT_BURST, port);
-		len = 0;
-	}
-
-	qconf->tx_mbufs[port].len = len;
-	return 0;
-}
 
 struct rte_mbuf *get_mbuf()
 {
@@ -290,32 +199,8 @@ send_packet_out(struct rte_mbuf *mbuf, int port)
 {
    struct rte_mbuf *mbuf_arr[1];
    mbuf_arr[0] = mbuf;
- //  mbuf->pkt.next = NULL;
-  // mbuf->pkt.nb_segs = 1;
- //  mbuf->pkt.data_len = 0;
- //  mbuf->pkt.pkt_len = 20;
    rte_eth_tx_burst(port, 0, &mbuf_arr[0], 1);
    printf("packet sent\n");
-}
-
-static void
-l2fwd_simple_forward(struct rte_mbuf *m, unsigned portid)
-{
-	struct ether_hdr *eth;
-	void *tmp;
-	unsigned dst_port;
-
-	dst_port = l2fwd_dst_ports[portid];
-	eth = rte_pktmbuf_mtod(m, struct ether_hdr *);
-
-	/* 02:00:00:00:00:xx */
-	tmp = &eth->d_addr.addr_bytes[0];
-	*((uint64_t *)tmp) = 0x000000000002 + ((uint64_t)dst_port << 40);
-
-	/* src addr */
-	ether_addr_copy(&l2fwd_ports_eth_addr[dst_port], &eth->s_addr);
-
-	l2fwd_send_packet(m, (uint8_t) dst_port);
 }
 
 /* main processing loop */
@@ -358,65 +243,6 @@ l2fwd_main_loop(void)
 	while (1) {
 
 		cur_tsc = rte_rdtsc();
-#if 0
-		/*
-		 * TX burst queue drain
-		 */
-		diff_tsc = cur_tsc - prev_tsc;
-		if (unlikely(diff_tsc > drain_tsc)) {
-
-			for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
-				if (qconf->tx_mbufs[portid].len == 0)
-					continue;
-				l2fwd_send_burst(&lcore_queue_conf[lcore_id],
-						 qconf->tx_mbufs[portid].len,
-						 (uint8_t) portid);
-				qconf->tx_mbufs[portid].len = 0;
-			}
-
-			/* if timer is enabled */
-			if (timer_period > 0) {
-
-				/* advance the timer */
-				timer_tsc += diff_tsc;
-
-				/* if timer has reached its timeout */
-				if (unlikely(timer_tsc >= (uint64_t) timer_period)) {
-
-					/* do this only on master core */
-					if (lcore_id == rte_get_master_lcore()) {
-						print_stats();
-						/* reset the timer */
-						timer_tsc = 0;
-					}
-				}
-			}
-
-			prev_tsc = cur_tsc;
-		}
-
-#endif
-		/*
-		 * Read packet from RX queues
-		 */
-#if 0
-		for (i = 0; i < qconf->n_rx_port; i++) {
-
-			portid = qconf->rx_port_list[i];
-			nb_rx = rte_eth_rx_burst((uint8_t) portid, 0,
-						 pkts_burst, MAX_PKT_BURST);
-			if(nb_rx) 
-				printf("found %d\n", portid);
-			port_statistics[portid].rx += nb_rx;
-
-			for (j = 0; j < nb_rx; j++) {
-				m = pkts_burst[j];
-				rte_prefetch0(rte_pktmbuf_mtod(m, void *));
-				l2fwd_simple_forward(m, portid);
-			}
-		}
-	}
-#endif
 	   int i;	
 		nb_rx = rte_eth_rx_burst((uint8_t) portid, 0,
 						 pkts_burst, MAX_PKT_BURST);
@@ -673,11 +499,6 @@ MAIN(int argc, char **argv)
 
 	if (nb_ports > RTE_MAX_ETHPORTS)
 		nb_ports = RTE_MAX_ETHPORTS;
-
-	/* reset l2fwd_dst_ports */
-	for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++)
-		l2fwd_dst_ports[portid] = 0;
-	last_port = 0;
 
 	/*
 	 * Each logical core is assigned a dedicated TX queue on each port.
