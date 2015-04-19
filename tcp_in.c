@@ -29,6 +29,11 @@ void sendack(struct tcb *ptcb)
    if(ptcphdr == NULL) {
       printf("tcp header is null\n");
    }
+   ptcphdr->src_port = htons(20);
+   ptcphdr->dst_port = htons(208);
+   ptcphdr->sent_seq = htonl(10);
+   ptcphdr->recv_ack = htonl(200);
+   
    printf(" null\n");
    fflush(stdout);
    ip_out(ptcb, mbuf); 

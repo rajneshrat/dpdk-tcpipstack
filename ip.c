@@ -60,7 +60,7 @@ ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf)
     hdr->next_proto_id = IPPROTO_TCP;
     hdr->hdr_checksum = 0;
     hdr->time_to_live = 127;
-    hdr->total_length = htons(sizeof(struct ipv4_hdr) + sizeof(struct tcp_hdr) + 20);
+    hdr->total_length = htons(sizeof(struct ipv4_hdr) + sizeof(struct tcp_hdr) + 0);
     hdr->packet_id = count++;
     hdr->hdr_checksum = htons(calculate_checksum(hdr, sizeof(struct ipv4_hdr)));
     ether_out(NULL, NULL, mbuf);
