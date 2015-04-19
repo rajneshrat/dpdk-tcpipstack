@@ -6,6 +6,14 @@ git push
 
 or
 
+at starting 
+
+git init
+git remote add origin git@github.com:rajneshrat/dpdk-tcpipstack
+git pull -u origin master
+
+
+
 git push -f -u origin master
 
 git difftool
