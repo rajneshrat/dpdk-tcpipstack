@@ -1,17 +1,23 @@
 #include "types.h"
+#include "ether.h"
 
-#define HW_ADDRESS_LEN 6
-UINT TotalInterface = 0
-
-struct Interface {
-   unsigned char Hw_Address[HW_ADDRESS_LEN];
-   unsigned int InterfaceNumber;
-   struct Interface *Next;
-};
+UINT TotalInterface = 0;
 
 struct Interface *InterfaceList = NULL;
 
-void Init()
+void InitInterface(struct Interface *IfList[], UINT Count)
 {
-   InterfaceList = malloc(sizeof(struct Interface));  
+   struct Interface *ptr = NULL;
+   int i = 0;
+   for(i=0; i<Count; i++) {
+      ptr = malloc(sizeof(struct Interface));
+      memcpy(ptr, IfList[i], sizeof(struct Interface));
+      ptr->Next = NULL;
+      if(i==0) {
+         InterfaceList = ptr;
+      }
+      else {
+         InterfaceList->Next = ptr;
+      }
+   }
 }

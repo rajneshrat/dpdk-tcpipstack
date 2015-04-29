@@ -5,6 +5,11 @@ export RTE_SDK=/home/rajnesh/Desktop/dpdk-1.6.0r2
 
 make
 
+if [ $? != 0 ]
+then
+   exit
+fi
+
 umount /mnt/huge
 rm -rf /mnt/huge
 

@@ -72,6 +72,7 @@
 
 #include "main.h"
 #include "etherin.h"
+#include "ether.h"
 
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
 
@@ -223,10 +224,10 @@ l2fwd_main_loop(void)
 	if ((qconf->n_rx_port == 0) && (lcore_id == 2)) {
 		RTE_LOG(INFO, L2FWD, "lcore %u has nothing to do\n", lcore_id);
       uint8_t ip[4];
-      ip[0] = 172;
-      ip[1] = 16;
-      ip[2] = 176;
-      ip[3] = 10;
+      ip[0] = 192;
+      ip[1] = 168;
+      ip[2] = 78;
+      ip[3] = 2;
       init_socket_example(23, ip); 
 		return;
 	}
@@ -618,6 +619,19 @@ MAIN(int argc, char **argv)
 	}
 
 	check_all_ports_link_status(nb_ports, l2fwd_enabled_port_mask);
+   struct Interface *IfList[1];
+   struct Interface temp;
+   int i;
+   for(i=0;i<6;i++) {
+      temp.HwAddress[i] = 0x01;
+   }
+   temp.InterfaceNumber = 1;
+   temp.IP[0] = 192;
+   temp.IP[1] = 168;
+   temp.IP[2] = 78;
+   temp.IP[3] = 2;
+   IfList[0] = &temp;
+   InitInterface(IfList, 1);
 
 	/* launch per-lcore init on every lcore */
 	rte_eal_mp_remote_launch(l2fwd_launch_one_lcore, NULL, CALL_MASTER);

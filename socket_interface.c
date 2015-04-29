@@ -6,7 +6,7 @@
 #include <pthread.h>
 
 
-int
+int 
 socket_open(STREAM_TYPE stream)
 {
    struct tcb *ptcb;
