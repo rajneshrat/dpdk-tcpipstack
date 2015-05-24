@@ -8,3 +8,13 @@ fix ethernet header.
 fix tcp header.
 write sample server example.
 fix tcp output.
+
+
+write sendsynack.
+write function tcpdoack.
+write tcp_send basic without windows protocol.
+
+write vector implementation and use those data structure.
+http://dpdk.org/doc/guides/prog_guide/packet_framework.html
+
+

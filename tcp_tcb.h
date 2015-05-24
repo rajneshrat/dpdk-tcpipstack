@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <inttypes.h>
 
+// make mac address also part of it.
 struct tcb
 {
    int dport;

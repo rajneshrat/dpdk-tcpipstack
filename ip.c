@@ -7,14 +7,19 @@
 #include <stdio.h>
 #include <rte_tcp.h>
 #include "tcp_tcb.h"
+#include "arp.h"
 
 int
 ip_in(struct rte_mbuf *mbuf)
 {
     struct ipv4_hdr *hdr =  (struct ipv4_hdr *)(rte_pktmbuf_mtod(mbuf, unsigned char *) +
                             sizeof(struct ether_hdr));
+    unsigned char mac[6];
     switch(hdr->next_proto_id) {
     case IPPROTO_TCP :
+        if(get_mac(hdr->src_addr, mac) == 0) {
+            add_mac(hdr->src_addr, mac);
+        }
         printf("tcp packet\n");
         tcp_in(mbuf);
         break;
@@ -45,6 +50,7 @@ uint16_t calculate_checksum(unsigned char *data, int len)
 int
 ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf)
 {
+    unsigned char dest_mac[6];
     printf("head room3 = %d\n", rte_pktmbuf_headroom(mbuf));
     struct ipv4_hdr *hdr = (struct ipv4_hdr *)rte_pktmbuf_prepend (mbuf, sizeof(struct ipv4_hdr));
     printf("head room4 = %d\n", rte_pktmbuf_headroom(mbuf));
@@ -53,9 +59,9 @@ ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf)
         printf("ip header is null\n");
         fflush(stdout);
     }
-    hdr->src_addr = ptcb->ipv4_src;
+    hdr->src_addr = ptcb->ipv4_dst;  // for outgoing src will be dest.
     printf("dst ip is %x\n", ptcb->ipv4_dst);
-    hdr->dst_addr = ptcb->ipv4_dst;
+    hdr->dst_addr = ptcb->ipv4_src;
     hdr->version_ihl = 4 << 4 | 5;
     hdr->next_proto_id = IPPROTO_TCP;
     hdr->hdr_checksum = 0;
@@ -63,5 +69,6 @@ ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf)
     hdr->total_length = htons(sizeof(struct ipv4_hdr) + sizeof(struct tcp_hdr) + 0);
     hdr->packet_id = count++;
     hdr->hdr_checksum = htons(calculate_checksum(hdr, sizeof(struct ipv4_hdr)));
-    ether_out(NULL, NULL, mbuf);
+    get_mac(ptcb->ipv4_dst, dest_mac);
+    ether_out(dest_mac, NULL, ETHER_TYPE_IPv4, mbuf);
 }

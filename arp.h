@@ -1,5 +1,6 @@
 // arp data structure 
-
+#ifndef _ARP_
+#define _ARP_
 #include <rte_common.h>
 
 typedef enum {
@@ -8,6 +9,11 @@ typedef enum {
    RARP_REQ,
    RARP_REPLY,
 } arp_type;
+
+#define HW_TYPE_ETHERNET 1
+#define SW_TYPE_IPV4 0x0800
+#define HW_LEN_ETHER 6
+#define PR_LEN_IPV4 4
 
 struct arp {
    uint16_t hw_type;
@@ -27,6 +33,12 @@ typedef enum {
    RESOLVED,
 } arp_state;
   
+struct arp_map {
+   uint32_t ipv4_addr;
+   char mac_addr[6];
+   struct arp_map *next;
+};
+
 struct rte_mbuf_queue {
 	struct rte_mbuf *m;
    struct rte_mbuf_queue *next;
@@ -41,4 +53,6 @@ struct arp_entry {
    struct rte_mbuf_queue *queue;
 };
 
-
+int get_mac(uint32_t ipv4_addr, unsigned char *mac_addr);
+int add_mac(uint32_t ipv4_addr, unsigned char *mac_addr);
+#endif

@@ -24,5 +24,6 @@ ether_in(struct rte_mbuf *mbuf)
       default :
 			rte_pktmbuf_free(mbuf);
    }
+   rte_pktmbuf_free(mbuf); // don't free here, future work.
 }
 

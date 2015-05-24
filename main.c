@@ -251,7 +251,7 @@ l2fwd_main_loop(void)
             for(i=0;i<nb_rx;i++) {
                ether_in(pkts_burst[i]);
 				   printf("found %d\n", portid);
-	            rte_eth_tx_burst(portid, 0, &pkts_burst[i], 1);
+	            //rte_eth_tx_burst(portid, 0, &pkts_burst[i], 1);
 	         }
          }
    }
@@ -629,7 +629,7 @@ MAIN(int argc, char **argv)
    temp.IP[0] = 192;
    temp.IP[1] = 168;
    temp.IP[2] = 78;
-   temp.IP[3] = 2;
+   temp.IP[3] = 3;
    IfList[0] = &temp;
    InitInterface(IfList, 1);
 
