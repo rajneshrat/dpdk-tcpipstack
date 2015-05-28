@@ -2,7 +2,7 @@
 #include <rte_mbuf.h>
 #include <assert.h>
 #include <rte_ether.h>
-
+#include "logger.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -34,6 +34,9 @@ arp_reply_queue(unsigned char *src_pr_add, unsigned char *dst_pr_add)
    struct rte_mbuf *new_mbuf = get_mbuf();
    struct arp *arp_reply = (struct arp *)rte_pktmbuf_prepend (new_mbuf, sizeof(struct arp));
 
+   logger(ARP, CRITICAL, ">>Ok testing logger\n"); 
+   EnableTrace(ARP, CRITICAL);
+   logger(ARP, CRITICAL, "............... Ok testing logger\n"); 
    char mac[6];   
 // http://www.tcpipguide.com/free/t_ARPMessageFormat.htm
    arp_reply->hw_type = htons(HW_TYPE_ETHERNET); 

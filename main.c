@@ -632,6 +632,7 @@ MAIN(int argc, char **argv)
    temp.IP[3] = 2;
    IfList[0] = &temp;
    InitInterface(IfList, 1);
+   InitLogger();
 
 	/* launch per-lcore init on every lcore */
 	rte_eal_mp_remote_launch(l2fwd_launch_one_lcore, NULL, CALL_MASTER);
