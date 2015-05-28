@@ -17,8 +17,8 @@ ip_in(struct rte_mbuf *mbuf)
     unsigned char mac[6];
     switch(hdr->next_proto_id) {
     case IPPROTO_TCP :
-        if(get_mac(hdr->src_addr, mac) == 0) {
-            add_mac(hdr->src_addr, mac);
+        if(get_mac(ntohl(hdr->src_addr), mac) == 0) {
+            add_mac(ntohl(hdr->src_addr), mac);
         }
         printf("tcp packet\n");
         tcp_in(mbuf);

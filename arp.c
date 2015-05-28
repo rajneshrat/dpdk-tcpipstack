@@ -30,18 +30,11 @@ swapvalue(char *add1, char *add2, int len)
 int
 arp_reply_queue(unsigned char *src_pr_add, unsigned char *dst_pr_add)
 {
-#if 0
-   struct arp *arp_pkt;
-   arp_pkt  = rte_pktmbuf_mtod(mbuf, char *) + sizeof(struct ether_hdr);
-   swapvalue(arp_pkt->src_hw_add, arp_pkt->dst_hw_add, 8);
-   swapvalue(arp_pkt->src_pr_add, arp_pkt->dst_pr_add, 8);
-   arp_pkt->opcode = htons(2);
-#endif
+   int i;
    struct rte_mbuf *new_mbuf = get_mbuf();
    struct arp *arp_reply = (struct arp *)rte_pktmbuf_prepend (new_mbuf, sizeof(struct arp));
 
    char mac[6];   
-//   memcpy(arp_reply, arp_pkt, sizeof(struct arp));
 // http://www.tcpipguide.com/free/t_ARPMessageFormat.htm
    arp_reply->hw_type = htons(HW_TYPE_ETHERNET); 
    arp_reply->pr_type = htons(SW_TYPE_IPV4);  
@@ -49,8 +42,10 @@ arp_reply_queue(unsigned char *src_pr_add, unsigned char *dst_pr_add)
    arp_reply->pr_len = PR_LEN_IPV4;  
    arp_reply->opcode = htons(2);
    unsigned char dest_mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff}; // don't use broadcast address for arp reply.
-   int status = get_mac(src_pr_add, mac);
-   printf("arp reply status = %d\n", status);
+   uint32_t ip_add = GetIntAddFromChar(dst_pr_add);
+   printf("Arp request for %x\n", ip_add);
+   int status = get_mac(ip_add, mac);
+   printf("arp reply status = %d and mac %x\n", status, mac[0]);
    memcpy(arp_reply->src_hw_add, mac, HW_LEN_ETHER); 
    memcpy(arp_reply->dst_hw_add, dest_mac, HW_LEN_ETHER); 
    memcpy(arp_reply->src_pr_add, src_pr_add, PR_LEN_IPV4); 
@@ -63,21 +58,36 @@ arp_in (struct rte_mbuf *mbuf)
 {
    assert(mbuf->buf_len >= sizeof(struct arp));
    struct arp *arp_pkt;
-
 	struct ether_hdr *eth;
 
 	eth = rte_pktmbuf_mtod(mbuf, struct ether_hdr *);
 
    assert(rte_pktmbuf_data_len(mbuf) >= (sizeof(struct arp) + sizeof(struct ether_hdr)));
    arp_pkt  = rte_pktmbuf_mtod(mbuf, char *) + sizeof(struct ether_hdr);
-   printf("in arp 2 %x\n",  ntohs(arp_pkt->opcode));
    switch(ntohs(arp_pkt->opcode)) {
       case ARP_REQ ://
          arp_reply_queue(arp_pkt->dst_pr_add, arp_pkt->src_pr_add );
+         uint32_t ip_add = GetIntAddFromChar(arp_pkt->src_pr_add);
+         add_mac((ip_add), arp_pkt->src_hw_add);
          printf("seen arp packet\n");
          break;
    //   default : assert(0);
    }
+}
+
+void 
+print_add(uint32_t ip_add)
+{
+   int i;
+   uint8_t ip;
+   uint32_t ip_hi = 0;
+   for(i=0;i<4;i++) {
+      ip_hi = ip_add;
+      ip = ip_hi & 0xff;
+      ip_add = ip_add >> 8;
+      printf("%u.", ip);
+   }
+   printf("\n");
 }
 
 int
@@ -85,7 +95,8 @@ get_mac(uint32_t ipv4_addr, unsigned char *mac_addr)
 {
    struct arp_map *temp = NULL;
 
-   printf("Getting mac for %x\n", ipv4_addr);
+   printf("Getting mac for ");
+   print_add(ipv4_addr);
    temp = arp_map_list;
    while(temp) {
       if(temp->ipv4_addr == ipv4_addr) {
@@ -94,6 +105,7 @@ get_mac(uint32_t ipv4_addr, unsigned char *mac_addr)
       }
       temp = temp->next;
    }
+   printf("No mac found\n");
    return 0;
 }
 
@@ -103,7 +115,8 @@ add_mac(uint32_t ipv4_addr, unsigned char *mac_addr)
    struct arp_map *temp = NULL;
    struct arp_map *last = NULL;
 
-   printf("Adding mac for %x\n", ipv4_addr);
+   printf("Adding mac for ");
+   print_add(ipv4_addr);
    temp = arp_map_list;
    while(temp) {
       temp = temp->next;
@@ -114,7 +127,10 @@ add_mac(uint32_t ipv4_addr, unsigned char *mac_addr)
    if(last) {
       last->next = temp;
    }
-   temp->ipv4_addr == ipv4_addr;
+   else {
+      arp_map_list = temp;
+   }
+   temp->ipv4_addr = ipv4_addr;
    strncpy(temp->mac_addr, mac_addr, 6);
    int i;
    for(i=0;i<6;i++) {

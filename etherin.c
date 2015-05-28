@@ -13,7 +13,6 @@ ether_in(struct rte_mbuf *mbuf)
 
 	eth = rte_pktmbuf_mtod(mbuf, struct ether_hdr *);
 
-   printf("in arp %x\n", eth->ether_type);
    switch(ntohs(eth->ether_type)) {
       case ETHER_TYPE_ARP : printf("arp packet\n");
          arp_in(mbuf);

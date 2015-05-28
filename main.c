@@ -629,7 +629,7 @@ MAIN(int argc, char **argv)
    temp.IP[0] = 192;
    temp.IP[1] = 168;
    temp.IP[2] = 78;
-   temp.IP[3] = 3;
+   temp.IP[3] = 2;
    IfList[0] = &temp;
    InitInterface(IfList, 1);
 
