@@ -14,10 +14,12 @@ ether_in(struct rte_mbuf *mbuf)
 	eth = rte_pktmbuf_mtod(mbuf, struct ether_hdr *);
 
    switch(ntohs(eth->ether_type)) {
-      case ETHER_TYPE_ARP : printf("arp packet\n");
+      case ETHER_TYPE_ARP : 
+         //printf("arp packet\n");
          arp_in(mbuf);
          break;
-      case ETHER_TYPE_IPv4 : printf("IP packet\n");
+      case ETHER_TYPE_IPv4 : 
+      //printf("IP packet\n");
          ip_in(mbuf);
          break; 
       default :

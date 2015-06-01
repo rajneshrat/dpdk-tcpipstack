@@ -10,12 +10,12 @@ void init_socket_example(int port, uint8_t *ip)
    for(i=0; i<4; i++) {
       addr.ip |= ip[i] << i*8;
    }
-   printf("ip is %x\n", addr.ip);
+//   printf("ip is %x\n", addr.ip);
    socket_bind(socket, &addr);
    socket_listen(socket, 5);
    struct sock_addr client;
-   printf("Waiting for accept\n");
+//   printf("Waiting for accept\n");
    socket_accept(socket, &client);
-   printf("accepted the connection\n");
+//   printf("accepted the connection\n");
 }
 

@@ -4,10 +4,14 @@
 #define HW_ADDRESS_LEN 6
 struct Interface {
    unsigned char HwAddress[HW_ADDRESS_LEN];
-   unsigned int InterfaceNumber;
+   uint8_t InterfaceNumber;
    unsigned char IP[4];
    struct Interface *Next;
 };
 
-uint32_t GetIntAddFromChar(unsigned char *address);
+uint32_t GetIntAddFromChar(unsigned char *address, uint8_t order);
+
+uint8_t GetInterfaceMac(uint8_t InterfaceNumber, uint8_t *mac);
+
+extern struct Interface *InterfaceList;
 #endif

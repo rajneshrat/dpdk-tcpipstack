@@ -20,7 +20,7 @@ ip_in(struct rte_mbuf *mbuf)
         if(get_mac(ntohl(hdr->src_addr), mac) == 0) {
             add_mac(ntohl(hdr->src_addr), mac);
         }
-        printf("tcp packet\n");
+        //printf("tcp packet\n");
         tcp_in(mbuf);
         break;
     default:
@@ -51,16 +51,16 @@ int
 ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf)
 {
     unsigned char dest_mac[6];
-    printf("head room3 = %d\n", rte_pktmbuf_headroom(mbuf));
+    //printf("head room3 = %d\n", rte_pktmbuf_headroom(mbuf));
     struct ipv4_hdr *hdr = (struct ipv4_hdr *)rte_pktmbuf_prepend (mbuf, sizeof(struct ipv4_hdr));
-    printf("head room4 = %d\n", rte_pktmbuf_headroom(mbuf));
+    //printf("head room4 = %d\n", rte_pktmbuf_headroom(mbuf));
     static uint32_t count = 0;
     if(hdr == NULL) {
-        printf("ip header is null\n");
-        fflush(stdout);
+        //printf("ip header is null\n");
+    //    fflush(stdout);
     }
     hdr->src_addr = ptcb->ipv4_dst;  // for outgoing src will be dest.
-    printf("dst ip is %x\n", ptcb->ipv4_dst);
+    //printf("dst ip is %x\n", ptcb->ipv4_dst);
     hdr->dst_addr = ptcb->ipv4_src;
     hdr->version_ihl = 4 << 4 | 5;
     hdr->next_proto_id = IPPROTO_TCP;

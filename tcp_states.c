@@ -17,7 +17,7 @@ tcpinstate *tcpswitch[TCP_STATES] = {
 int
 tcp_listen(struct tcb *ptcb, struct rte_mbuf* mbuf)
 {
-   printf("tcp_listen called\n");
+   ////printf("tcp_listen called\n");
    struct tcb *new_ptcb = NULL;
    new_ptcb = alloc_tcb(); 
    new_ptcb->state = SYN_RECV;
@@ -30,7 +30,7 @@ tcp_listen(struct tcb *ptcb, struct rte_mbuf* mbuf)
    pthread_mutex_lock(&(ptcb->mutex));
    pthread_cond_signal(&(ptcb->condAccept));
    pthread_mutex_unlock(&(ptcb->mutex));
-   printf("sending ack\n");
+   //printf("sending ack\n");
    //sendack(new_ptcb);
    sendsynack(new_ptcb);
    return 0;
@@ -38,6 +38,6 @@ tcp_listen(struct tcb *ptcb, struct rte_mbuf* mbuf)
 int
 tcp_closed(struct tcb *ptcb, struct rte_mbuf* mbuf)
 {
-   printf("tcp_closed called\n");
+  // //printf("tcp_closed called\n");
 
 }

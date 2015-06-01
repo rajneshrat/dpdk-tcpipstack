@@ -14,7 +14,7 @@ typedef enum {
 #define SW_TYPE_IPV4 0x0800
 #define HW_LEN_ETHER 6
 #define PR_LEN_IPV4 4
-
+//http://www.tcpipguide.com/free/t_ARPMessageFormat.htm // for arp format.
 struct arp {
    uint16_t hw_type;
    uint16_t pr_type;

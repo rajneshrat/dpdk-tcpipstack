@@ -33,8 +33,8 @@ struct tcb* get_tcb_by_identifier(int identifier)
    struct tcb *ptcb = NULL;
    for(i=0; i<Ntcb; i++) {  // change it to hash type later
       ptcb = &tcbs[i];
-      printf("Finding the tcb\n");
-      printf("identifier is  = %d\n",ptcb->identifier); 
+      //printf("Finding the tcb\n");
+     // printf("identifier is  = %d\n",ptcb->identifier); 
       if(ptcb->identifier == identifier) {
          return ptcb;
       }
@@ -49,8 +49,8 @@ struct tcb* findtcb(struct tcp_hdr *ptcphdr, struct rte_mbuf *mbuf)
 
    dest_port = ntohs(ptcphdr->dst_port);
    //dest_port = (ptcphdr->dst_port);
-   printf("Finding the tcb\n");
-   printf("dest port = %d\n",dest_port); 
+   //printf("Finding the tcb\n");
+   //printf("dest port = %d\n",dest_port); 
 //   struct ipv4_hdr *ip_hdr =  (struct ipv4_hdr *)(rte_pktmbuf_mtod(mbuf, unsigned char *) +
   //       sizeof(struct ether_hdr));
    //struct tcp_hdr *ptcphdr = (struct tcp_hdr *) (ip_hdr + sizeof(struct ipv4_hdr)); 
@@ -62,13 +62,13 @@ struct tcb* findtcb(struct tcp_hdr *ptcphdr, struct rte_mbuf *mbuf)
       }
       if(ptcb->state == LISTENING) {
          if((ptcb->dport) == dest_port) {
-            printf("Found a listening tcb. listening port = %d, packet port = %d\n", ptcb->dport, dest_port);
+            //printf("Found a listening tcb. listening port = %d, packet port = %d\n", ptcb->dport, dest_port);
             return ptcb; 
          }
       }
          
    }
-   printf("return NULL tcb\n");
+   //printf("return NULL tcb\n");
    fflush(stdout);
    return NULL;
 }

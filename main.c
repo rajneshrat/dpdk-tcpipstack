@@ -201,7 +201,7 @@ send_packet_out(struct rte_mbuf *mbuf, int port)
    struct rte_mbuf *mbuf_arr[1];
    mbuf_arr[0] = mbuf;
    rte_eth_tx_burst(port, 0, &mbuf_arr[0], 1);
-   printf("packet sent\n");
+   //printf("packet sent\n");
 }
 
 /* main processing loop */
@@ -250,7 +250,7 @@ l2fwd_main_loop(void)
 			if(nb_rx) {
             for(i=0;i<nb_rx;i++) {
                ether_in(pkts_burst[i]);
-				   printf("found %d\n", portid);
+				  // printf("found %d\n", portid);
 	            //rte_eth_tx_burst(portid, 0, &pkts_burst[i], 1);
 	         }
          }
@@ -631,8 +631,8 @@ MAIN(int argc, char **argv)
    temp.IP[2] = 78;
    temp.IP[3] = 2;
    IfList[0] = &temp;
-   InitInterface(IfList, 1);
    InitLogger();
+   InitInterface(IfList, 1);
 
 	/* launch per-lcore init on every lcore */
 	rte_eal_mp_remote_launch(l2fwd_launch_one_lcore, NULL, CALL_MASTER);

@@ -9,7 +9,8 @@ typedef enum {
 
 typedef enum {
    CRITICAL,
-
+   NORMAL,
+   ALL,
 }TRACE_LEVEL;
 
 void logger(FEATURE feature, TRACE_LEVEL Level, const char *format,  ...);
