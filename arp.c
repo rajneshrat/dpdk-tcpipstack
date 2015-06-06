@@ -63,7 +63,6 @@ send_arp_reply(unsigned char *src_pr_add, unsigned char *dst_pr_add)
    memcpy(arp_reply->dst_pr_add, dst_pr_add, PR_LEN_IPV4); 
    send_arp(arp_reply);
    free(arp_reply);
- //  ether_out(dest_mac, NULL, ETHER_TYPE_ARP, new_mbuf);
 }
 
 int
@@ -107,6 +106,7 @@ arp_in (struct rte_mbuf *mbuf)
    assert(mbuf->buf_len >= sizeof(struct arp));
    struct arp *arp_pkt;
 	struct ether_hdr *eth;
+   uint32_t ip_add = 0;
 
 	eth = rte_pktmbuf_mtod(mbuf, struct ether_hdr *);
 
@@ -114,10 +114,18 @@ arp_in (struct rte_mbuf *mbuf)
    arp_pkt  = rte_pktmbuf_mtod(mbuf, char *) + sizeof(struct ether_hdr);
    switch(ntohs(arp_pkt->opcode)) {
       case ARP_REQ ://
-         send_arp_reply(arp_pkt->dst_pr_add, arp_pkt->src_pr_add);
+         //send_arp_reply(arp_pkt->dst_pr_add, arp_pkt->src_pr_add);
+         send_arp_request(arp_pkt->dst_pr_add, arp_pkt->src_pr_add);
+         break;
+      /*
          uint32_t ip_add = GetIntAddFromChar(arp_pkt->src_pr_add, 0);
          add_mac((ip_add), arp_pkt->src_hw_add);
          logger(ARP, NORMAL, "seen arp packet\n");
+         break;
+      */
+      case ARP_REPLY ://
+         ip_add = GetIntAddFromChar(arp_pkt->src_pr_add, 0);
+         add_mac((ip_add), arp_pkt->src_hw_add);
          break;
    //   default : assert(0);
    }
@@ -130,12 +138,14 @@ print_add(uint32_t ip_add)
    uint8_t ip;
    uint32_t ip_hi = 0;
    for(i=0;i<4;i++) {
-      ip_hi = ip_add;
-      ip = ip_hi & 0xff;
-      ip_add = ip_add >> 8;
-      logger(ARP, ALL, "%u.", ip);
+      ip = ip_add >> 24;
+      ip_add = ip_add << 8;
+      log_print(ARP, ALL, "%u", ip);
+      if(i != 3) {
+         log_print(ARP, ALL, ".");
+      }
    }
-   logger(ARP, ALL, "\n");
+   log_print(ARP, ALL, "\n");
 }
 
 void
@@ -183,6 +193,7 @@ get_mac(uint32_t ipv4_addr, unsigned char *mac_addr)
    while(temp) {
       if(temp->ipv4_addr == ipv4_addr) {
          strncpy(mac_addr, temp->mac_addr, 6);
+         logger(ARP, NORMAL, "mac found\n");
          return 1;
       }
       temp = temp->next;

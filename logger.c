@@ -23,7 +23,7 @@ void EnableTrace(FEATURE Feature, TRACE_LEVEL Level)
    LogFeature[Feature].Level = Level;
 }
 
-void logger(FEATURE Feature, TRACE_LEVEL Level, const char *format,  ...)
+void log_print(FEATURE Feature, TRACE_LEVEL Level, const char *format,  ...)
 {
    va_list(arglist);
    if((LogFeature[Feature].Enable == 1) && (LogFeature[Feature].Level >= Level)) {
