@@ -20,6 +20,7 @@ tcp_listen(struct tcb *ptcb, struct rte_mbuf* mbuf)
    ////printf("tcp_listen called\n");
    struct tcb *new_ptcb = NULL;
    new_ptcb = alloc_tcb(); 
+   memcpy(new_ptcb, ptcb, sizeof(struct tcb));
    new_ptcb->state = SYN_RECV;
    new_ptcb->dport = ptcb->dport;
    new_ptcb->ipv4_dst = ptcb->ipv4_dst;

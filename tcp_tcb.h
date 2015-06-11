@@ -11,6 +11,8 @@ struct tcb
 {
    int dport;
    int sport;
+   uint32_t ack;
+   uint32_t next_seq;
    int WaitingOnAccept;
    struct tcb *newpTcbOnAccept;
    uint32_t ipv4_dst;

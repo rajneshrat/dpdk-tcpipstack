@@ -53,18 +53,20 @@ int tcp_in(struct rte_mbuf *mbuf)
    struct tcp_hdr *ptcphdr = (struct tcp_hdr *) ( rte_pktmbuf_mtod(mbuf, unsigned char *) + 
          sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr)); 
    ptcb = findtcb(ptcphdr);
-   ptcb->ipv4_src = hdr->src_addr;
    if(ptcb == NULL) {
       ++tcpnopcb;
       rte_pktmbuf_free(mbuf);
       return -1;
    }
+   ptcb->ipv4_src = hdr->src_addr;
+   ptcb->sport = ntohs(ptcphdr->src_port);
+   ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;
    if(tcpok(ptcb, mbuf)) {
       tcpswitch[ptcb->state](ptcb, mbuf);
       //(tcpswitch[1])(ptcb, mbuf);
    }
    else {
-      sendack(ptcb);
+      sendsynack(ptcb);
    }
    return 0;
 }

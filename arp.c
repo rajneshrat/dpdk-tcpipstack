@@ -114,8 +114,7 @@ arp_in (struct rte_mbuf *mbuf)
    arp_pkt  = rte_pktmbuf_mtod(mbuf, char *) + sizeof(struct ether_hdr);
    switch(ntohs(arp_pkt->opcode)) {
       case ARP_REQ ://
-         //send_arp_reply(arp_pkt->dst_pr_add, arp_pkt->src_pr_add);
-         send_arp_request(arp_pkt->dst_pr_add, arp_pkt->src_pr_add);
+         send_arp_reply(arp_pkt->dst_pr_add, arp_pkt->src_pr_add);
          break;
       /*
          uint32_t ip_add = GetIntAddFromChar(arp_pkt->src_pr_add, 0);

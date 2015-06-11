@@ -8,6 +8,7 @@
 #include <rte_tcp.h>
 #include "tcp_tcb.h"
 #include "arp.h"
+#include "tcp.h"
 
 int
 ip_in(struct rte_mbuf *mbuf)
@@ -52,8 +53,12 @@ ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf)
 {
     unsigned char dest_mac[6];
     //printf("head room3 = %d\n", rte_pktmbuf_headroom(mbuf));
+    struct tcp_hdr *ptcphdr =  rte_pktmbuf_mtod(mbuf, struct tcp_hdr *);  
     struct ipv4_hdr *hdr = (struct ipv4_hdr *)rte_pktmbuf_prepend (mbuf, sizeof(struct ipv4_hdr));
     //printf("head room4 = %d\n", rte_pktmbuf_headroom(mbuf));
+    struct pseudo_tcp_hdr *pseudohdr = malloc (sizeof (struct pseudo_tcp_hdr));
+    memset(pseudohdr, 0, sizeof(struct pseudo_tcp_hdr));
+    ptcphdr->cksum = 0;
     static uint32_t count = 0;
     if(hdr == NULL) {
         //printf("ip header is null\n");
@@ -69,6 +74,18 @@ ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf)
     hdr->total_length = htons(sizeof(struct ipv4_hdr) + sizeof(struct tcp_hdr) + 0);
     hdr->packet_id = count++;
     hdr->hdr_checksum = htons(calculate_checksum(hdr, sizeof(struct ipv4_hdr)));
+
+    pseudohdr->src_ip = hdr->src_addr;
+    pseudohdr->dst_ip = hdr->dst_addr; 
+    pseudohdr->reserved = 0; 
+    pseudohdr->protocol = (IPPROTO_TCP);
+    pseudohdr->len = htons(20); 
+    char *temp = malloc(sizeof(struct pseudo_tcp_hdr) + 20); 
+   // memset(temp, 0, sizeof(struct pseudo_tcp_hdr) + 20);
+    memcpy(temp, pseudohdr, sizeof(struct pseudo_tcp_hdr));
+    memcpy(temp + sizeof(struct pseudo_tcp_hdr), ptcphdr, 20);
+    ptcphdr->cksum = htons(calculate_checksum(temp, sizeof(struct pseudo_tcp_hdr) + 20));
+//    ptcphdr->cksum = get_ipv4_psd_sum(hdr); 
     get_mac(ptcb->ipv4_dst, dest_mac);
     ether_out(dest_mac, NULL, ETHER_TYPE_IPv4, mbuf);
 }
