@@ -2,19 +2,14 @@
 #include "logger.h"
 #include <rte_common.h>
 
-uint32_t LoggingFeatures = 0;
-
-struct LoggerFeature {
-   TRACE_LEVEL Level;
-   uint8_t Enable;
-};
+//uint32_t LoggingFeatures = 0;
 
 struct LoggerFeature *LogFeature;
 
 void InitLogger()
 {
    LogFeature = calloc(TOTAL_FEATURE, sizeof(struct LoggerFeature));
-   EnableTrace(ARP, ALL);
+   //EnableTrace(ARP, ALL);
    EnableTrace(TCP, ALL);
 }
 

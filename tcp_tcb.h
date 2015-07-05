@@ -17,6 +17,8 @@ struct tcb
    struct tcb *newpTcbOnAccept;
    uint32_t ipv4_dst;
    uint32_t ipv4_src;
+   char dest_mac[6];
+   char src_mac[6];
    TCP_STATE state;
    pthread_mutex_t mutex;
    pthread_cond_t condAccept; 

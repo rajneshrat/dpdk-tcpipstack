@@ -12,8 +12,44 @@
 #include "tcp_states.h"
 #include "logger.h"
 
+uint8_t add_mss_option(struct rte_mbuf *mbuf, uint16_t mss_value)
+{
+   struct tcp_mss_option *mss_option = (struct tcp_option *)rte_pktmbuf_prepend (mbuf, sizeof(struct tcp_mss_option));
+   mss_option->type = 2;
+   mss_option->len = 4;
+   mss_option->value = htons(mss_value);
+   return 4; // 1 * 4 bytes
+}
+
+uint8_t add_winscale_option(struct rte_mbuf *mbuf, uint8_t value)
+{
+   struct tcp_winscale_option *option = (struct tcp_winscale_option *)rte_pktmbuf_prepend (mbuf, sizeof(struct tcp_winscale_option));
+   option->type = 3;
+   option->len = 3;
+   option->value = value;
+   return 3;
+}
+
+uint8_t add_timestamp_option(struct rte_mbuf *mbuf, uint32_t value, uint32_t echo)
+{
+   struct tcp_timestamp_option *option = (struct tcp_timestamp_option *)rte_pktmbuf_prepend (mbuf, sizeof(struct tcp_timestamp_option));
+   option->type = 8;
+   option->len = 10;
+   option->value = value;
+   option->echo = echo;
+   return 10;
+}
+
 void sendtcppacket(struct tcb *ptcb, struct rte_mbuf *mbuf)
 {
+   //uint8_t tcp_len = 0x50 + add_mss_option(mbuf, 1300);// + add_winscale_option(mbuf, 7);
+   uint8_t option_len = add_winscale_option(mbuf, 7) + add_mss_option(mbuf, 1300) + add_timestamp_option(mbuf, 203032, 0);
+   uint8_t tcp_len = 20 + option_len;
+   logger(TCP, NORMAL, "padding option %d\n",  4 - (tcp_len % 4)); 
+   rte_pktmbuf_append (mbuf, 4 - (tcp_len % 4)); // always pad the option to make total size multiple of 4.
+   tcp_len = (tcp_len + 3) / 4;  // len is in multiple of 4 bytes;  20  will be 5
+   tcp_len = tcp_len << 4; // len has upper 4 bits position in tcp header.
+   logger(TCP, NORMAL, "sending tcp packet\n");
    struct tcp_hdr *ptcphdr = (struct tcp_hdr *)rte_pktmbuf_prepend (mbuf, sizeof(struct tcp_hdr));
   // printf("head room2 = %d\n", rte_pktmbuf_headroom(mbuf));
    if(ptcphdr == NULL) {
@@ -23,18 +59,17 @@ void sendtcppacket(struct tcb *ptcb, struct rte_mbuf *mbuf)
    ptcphdr->dst_port = htons(ptcb->sport);
    ptcphdr->sent_seq = htonl(10);
    ptcphdr->recv_ack = htonl(ptcb->ack);
-   ptcphdr->data_off = 0x50;
+   ptcphdr->data_off = tcp_len;
    ptcphdr->tcp_flags =  SYN | ACK;
    ptcphdr->rx_win = 12000;
-   ptcphdr->cksum = 0x0001;
+//   ptcphdr->cksum = 0x0001;
    ptcphdr->tcp_urp = 0; 
    //mbuf->ol_flags |=  PKT_TX_IP_CKSUM; // someday will caluclate checkum here only.
    
  //  printf(" null\n");
   // fflush(stdout);
-   
-   logger(TCP, NORMAL, "sending tcp packet\n");
-   ip_out(ptcb, mbuf); 
+   ip_out(ptcb, mbuf, ptcphdr); 
+
 }
 
 void sendsynack(struct tcb *ptcb)

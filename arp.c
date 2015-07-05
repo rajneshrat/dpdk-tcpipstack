@@ -144,7 +144,6 @@ print_add(uint32_t ip_add)
          log_print(ARP, ALL, ".");
       }
    }
-   log_print(ARP, ALL, "\n");
 }
 
 void
@@ -201,18 +200,43 @@ get_mac(uint32_t ipv4_addr, unsigned char *mac_addr)
    return 0;
 }
 
+void
+print_arp_table()
+{
+   struct arp_map *temp = NULL;
+   int i;
+   temp = arp_map_list;
+   logger(ARP, NORMAL, "printing arp table.\n");
+   while(temp) {
+      log_print(ARP, NORMAL, " IP = "); 
+      print_add(temp->ipv4_addr);
+      log_print(ARP, NORMAL, " mac = ");  
+      for(i=0; i<6; i++) {
+         log_print(ARP, NORMAL, "%x", temp->mac_addr[i]);
+      }
+      log_print(ARP, NORMAL, "\n");
+      temp = temp->next;
+   }
+}
+
 int
 add_mac(uint32_t ipv4_addr, unsigned char *mac_addr) 
 {
    struct arp_map *temp = NULL;
    struct arp_map *last = NULL;
+   int i;
 
    logger(ARP, ALL, "Adding mac for ");
    print_add(ipv4_addr);
+   for(i=0;i<6;i++) {
+      log_print(ARP, ALL, " %x", mac_addr[i]);
+   }
+   log_print(ARP, ALL, "\n");
+   
    temp = arp_map_list;
    while(temp) {
-      temp = temp->next;
       last = temp;
+      temp = temp->next;
    }
    temp = malloc(sizeof(struct arp_map));
    temp->next = NULL;
@@ -221,10 +245,10 @@ add_mac(uint32_t ipv4_addr, unsigned char *mac_addr)
    }
    else {
       arp_map_list = temp;
+      logger(ARP, ALL, " creating a new arp list.\n");
    }
    temp->ipv4_addr = ipv4_addr;
    strncpy(temp->mac_addr, mac_addr, 6);
-   int i;
    for(i=0;i<6;i++) {
       //printf("%x ", mac_addr);
    }

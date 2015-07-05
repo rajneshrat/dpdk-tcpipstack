@@ -1,11 +1,8 @@
-fix arp request.
- 
+fix tcp header.
+
 move main separate and create library.
 fix main, use only part needed.
-fix ip header.
 make it a library.
-fix ethernet header.
-fix tcp header.
 write sample server example.
 fix tcp output.
 

@@ -58,7 +58,7 @@ int tcp_in(struct rte_mbuf *mbuf)
       rte_pktmbuf_free(mbuf);
       return -1;
    }
-   ptcb->ipv4_src = hdr->src_addr;
+   ptcb->ipv4_src = ntohl(hdr->src_addr);
    ptcb->sport = ntohs(ptcphdr->src_port);
    ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;
    if(tcpok(ptcb, mbuf)) {
