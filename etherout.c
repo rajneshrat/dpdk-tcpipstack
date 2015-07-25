@@ -16,8 +16,13 @@ ether_out(char *dst_mac, char *src_mac, uint16_t ether_type, struct rte_mbuf *mb
    for(i=0;i<6;i++) {
       eth->d_addr.addr_bytes[i] = dst_mac[i];
    }
-   for(i=0;i<6;i++) {
-      eth->s_addr.addr_bytes[i] = 0x21;
-   }
+//   for(i=0;i<6;i++) {
+   eth->s_addr.addr_bytes[0] = 0x6a;
+   eth->s_addr.addr_bytes[1] = 0x9c;
+   eth->s_addr.addr_bytes[2] = 0xba;
+   eth->s_addr.addr_bytes[3] = 0xa0;
+   eth->s_addr.addr_bytes[4] = 0x96;
+   eth->s_addr.addr_bytes[5] = 0x24;
+//   }
    send_packet_out(mbuf, 0);
 }

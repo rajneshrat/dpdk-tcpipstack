@@ -57,10 +57,10 @@ void sendtcppacket(struct tcb *ptcb, struct rte_mbuf *mbuf)
    }
    ptcphdr->src_port = htons(ptcb->dport);
    ptcphdr->dst_port = htons(ptcb->sport);
-   ptcphdr->sent_seq = htonl(10);
+   ptcphdr->sent_seq = htonl(0);
    ptcphdr->recv_ack = htonl(ptcb->ack);
    ptcphdr->data_off = tcp_len;
-   ptcphdr->tcp_flags =  SYN | ACK;
+   ptcphdr->tcp_flags =  SYN|ACK;
    ptcphdr->rx_win = 12000;
 //   ptcphdr->cksum = 0x0001;
    ptcphdr->tcp_urp = 0; 
