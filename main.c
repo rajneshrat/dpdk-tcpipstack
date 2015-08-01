@@ -31,6 +31,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+// this file is used as a sample to init dpdk, user are expected to write their own such file.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -219,8 +221,10 @@ l2fwd_main_loop(void)
 	prev_tsc = 0;
 	timer_tsc = 0;
 
+
 	lcore_id = rte_lcore_id();
 	qconf = &lcore_queue_conf[lcore_id];
+   portid = lcore_id -1;
 	if ((qconf->n_rx_port == 0) && (lcore_id == 2)) {
 		RTE_LOG(INFO, L2FWD, "lcore %u has nothing to do\n", lcore_id);
       uint8_t ip[4];
@@ -236,16 +240,25 @@ l2fwd_main_loop(void)
 
 	for (i = 0; i < qconf->n_rx_port; i++) {
 
-		portid = qconf->rx_port_list[i];
+//		portid = qconf->rx_port_list[i];
 		RTE_LOG(INFO, L2FWD, " -- lcoreid=%u portid=%u\n", lcore_id,
 			portid);
 	}
+
+//   portid = 0;
+   printf("REciving packet from port %d\n", portid);
 
 	while (1) {
 
 		cur_tsc = rte_rdtsc();
 	   int i;	
+      if(portid) 
+         portid = 0;
+      else 
+         portid = 1;
+
 		nb_rx = rte_eth_rx_burst((uint8_t) portid, 0,
+		//nb_rx = rte_eth_rx_burst((uint8_t) 1, 0,
 						 pkts_burst, MAX_PKT_BURST);
 			if(nb_rx) {
             for(i=0;i<nb_rx;i++) {
@@ -257,11 +270,22 @@ l2fwd_main_loop(void)
    }
 
 }
+#include <rte_spinlock.h>
+rte_spinlock_t *lock;
 
 static int
 l2fwd_launch_one_lcore(__attribute__((unused)) void *dummy)
 {
-	l2fwd_main_loop();
+//   static done = 1;
+      printf("ready to take packet init'\n");
+
+//   rte_spinlock_lock(lock);
+//   if(1 || done) {
+      printf("ready to take packet'\n");
+	   l2fwd_main_loop();
+//      done = 0;
+//   }
+//   rte_spinlock_unlock(lock);
 	return 0;
 }
 
@@ -454,6 +478,8 @@ void init_socket_example(int port, uint8_t *ip);
 int
 MAIN(int argc, char **argv)
 {
+   lock = malloc(sizeof(rte_spinlock_t));
+   rte_spinlock_init(lock);
 	struct lcore_queue_conf *qconf;
 	struct rte_eth_dev_info dev_info;
 	int ret;
@@ -557,6 +583,7 @@ MAIN(int argc, char **argv)
    printf("ports = %d", nb_ports);
 	/* Initialise each port */
 	for (portid = 0; portid < nb_ports; portid++) {
+//	for (portid = 0; portid < 1; portid++) {
 		/* skip ports that are not enabled */
 		if ((l2fwd_enabled_port_mask & (1 << portid)) == 0) {
 			printf("Skipping disabled port %u\n", (unsigned) portid);
@@ -635,11 +662,11 @@ MAIN(int argc, char **argv)
    InitInterface(IfList, 1);
 
 	/* launch per-lcore init on every lcore */
-	rte_eal_mp_remote_launch(l2fwd_launch_one_lcore, NULL, CALL_MASTER);
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 		if (rte_eal_wait_lcore(lcore_id) < 0)
 			return -1;
 	}
+	rte_eal_mp_remote_launch(l2fwd_launch_one_lcore, NULL, CALL_MASTER);
 
 	return 0;
 }

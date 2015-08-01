@@ -64,7 +64,7 @@ void sendtcppacket(struct tcb *ptcb, struct rte_mbuf *mbuf)
    ptcphdr->rx_win = 12000;
 //   ptcphdr->cksum = 0x0001;
    ptcphdr->tcp_urp = 0; 
-   //mbuf->ol_flags |=  PKT_TX_IP_CKSUM; // someday will caluclate checkum here only.
+   //mbuf->ol_flags |=  PKT_TX_IP_CKSUM; // someday will calclate checkum here only.
    
  //  printf(" null\n");
   // fflush(stdout);
