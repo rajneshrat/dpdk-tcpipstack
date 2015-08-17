@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <rte_ip.h>
 #include <rte_tcp.h>
+#include "logger.h"
 
 #include <stdio.h>
 #include "tcp_in.h"
@@ -42,6 +43,7 @@ void sendack(struct tcb *ptcb)
 int tcp_in(struct rte_mbuf *mbuf)
 {
    struct tcb *ptcb = NULL;
+   logger(TCP, NORMAL, "received tcp packet\n");
    //calculate tcp checksum.
    if(0) {
       rte_pktmbuf_free(mbuf);
@@ -56,16 +58,20 @@ int tcp_in(struct rte_mbuf *mbuf)
    if(ptcb == NULL) {
       ++tcpnopcb;
       rte_pktmbuf_free(mbuf);
+      logger(TCP, CRITICAL, "found null tcb\n");
       return -1;
    }
    ptcb->ipv4_src = ntohl(hdr->src_addr);
    ptcb->sport = ntohs(ptcphdr->src_port);
+   printf("sport = %d\n", ptcb->sport);
    ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;
    if(tcpok(ptcb, mbuf)) {
-      tcpswitch[ptcb->state](ptcb, mbuf);
+      logger(TCP, NORMAL, "sending tcp packet\n");
+      tcpswitch[ptcb->state](ptcb, ptcphdr);
       //(tcpswitch[1])(ptcb, mbuf);
    }
    else {
+      logger(TCP, NORMAL, "sending syn-ack packet\n");
       sendsynack(ptcb);
    }
    return 0;

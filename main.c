@@ -200,10 +200,23 @@ struct rte_mbuf *get_mbuf()
 int
 send_packet_out(struct rte_mbuf *mbuf, int port)
 {
-   struct rte_mbuf *mbuf_arr[1];
+   static int count = 0;
+   count ++;
+   printf("Total packet sent = %d\n", count);
+   
+   static struct rte_mbuf *last = NULL;
+   struct rte_mbuf *rte_mbuf[2];
+   if(last== mbuf) {
+      printf("Sending same buf again.\n");
+   }
+   last = mbuf;
+   struct rte_mbuf **mbuf_arr = malloc(sizeof(struct rte_mbuf*) * 2);
+   if(mbuf_arr == NULL) {
+      printf("mbuf array is null\n");
+   }
    mbuf_arr[0] = mbuf;
+   //printf("sending port from %d\n", port);
    rte_eth_tx_burst(port, 0, &mbuf_arr[0], 1);
-   //printf("packet sent\n");
 }
 
 /* main processing loop */
@@ -220,21 +233,25 @@ l2fwd_main_loop(void)
 
 	prev_tsc = 0;
 	timer_tsc = 0;
-
-
 	lcore_id = rte_lcore_id();
+
 	qconf = &lcore_queue_conf[lcore_id];
-   portid = lcore_id -1;
-	if ((qconf->n_rx_port == 0) && (lcore_id == 2)) {
+   static int  ports = 0;
+   printf("Call for %d\n.", lcore_id);
+	if ((lcore_id == 1)) {  // core 1 dedicaated for my socket example.
 		RTE_LOG(INFO, L2FWD, "lcore %u has nothing to do\n", lcore_id);
       uint8_t ip[4];
       ip[0] = 192;
       ip[1] = 168;
       ip[2] = 78;
       ip[3] = 2;
-      init_socket_example(23, ip); 
-		return;
+      init_socket_example(23, ip); // this call is blocking call. 
+	//	return;
 	}
+   if(lcore_id != 2) {  // doing all on core 2
+      printf("Ignoring core id %d\n", lcore_id);
+      return;
+   }
 
 	RTE_LOG(INFO, L2FWD, "entering main loop on lcore %u\n", lcore_id);
 
@@ -245,17 +262,17 @@ l2fwd_main_loop(void)
 			portid);
 	}
 
-//   portid = 0;
+   portid = 0;//ports ++;
    printf("REciving packet from port %d\n", portid);
 
 	while (1) {
 
-		cur_tsc = rte_rdtsc();
+//		cur_tsc = rte_rdtsc();
 	   int i;	
-      if(portid) 
-         portid = 0;
-      else 
-         portid = 1;
+//      if(portid) 
+//         portid = 0;
+//      else 
+//         portid = 1;
 
 		nb_rx = rte_eth_rx_burst((uint8_t) portid, 0,
 		//nb_rx = rte_eth_rx_burst((uint8_t) 1, 0,
@@ -263,7 +280,7 @@ l2fwd_main_loop(void)
 			if(nb_rx) {
             for(i=0;i<nb_rx;i++) {
                ether_in(pkts_burst[i]);
-				  // printf("found %d\n", portid);
+				   printf("found %d\n", portid);
 	            //rte_eth_tx_burst(portid, 0, &pkts_burst[i], 1);
 	         }
          }
@@ -283,6 +300,7 @@ l2fwd_launch_one_lcore(__attribute__((unused)) void *dummy)
 //   if(1 || done) {
       printf("ready to take packet'\n");
 	   l2fwd_main_loop();
+      printf("coming out of loop.\n");
 //      done = 0;
 //   }
 //   rte_spinlock_unlock(lock);
@@ -661,13 +679,17 @@ MAIN(int argc, char **argv)
    InitLogger();
    InitInterface(IfList, 1);
 
+#if 0
 	/* launch per-lcore init on every lcore */
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 		if (rte_eal_wait_lcore(lcore_id) < 0)
 			return -1;
 	}
-	rte_eal_mp_remote_launch(l2fwd_launch_one_lcore, NULL, CALL_MASTER);
+#endif
+	rte_eal_mp_remote_launch(l2fwd_launch_one_lcore, NULL, SKIP_MASTER);
+   printf("Main exiting.\n");
 
+    rte_eal_mp_wait_lcore ();
 	return 0;
 }
 

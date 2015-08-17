@@ -27,6 +27,7 @@ socket_bind(int identifier, struct sock_addr *serv_addr)
    }
    ptcb->ipv4_dst = serv_addr->ip;
    ptcb->dport = serv_addr->port;
+   ptcb->sport = 0;
    ptcb->state = LISTENING;
    return 0;
 }

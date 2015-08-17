@@ -10,7 +10,7 @@
 #include "tcp_common.h"
 #include <pthread.h>
 
-#define TOTAL_TCBS 100
+#define TOTAL_TCBS 120
 pthread_mutex_t tcb_alloc_mutex;
 
 int Ntcb = 0;
@@ -23,6 +23,7 @@ struct tcb* alloc_tcb()
    pthread_mutex_lock(&tcb_alloc_mutex);
    i = Ntcb;
    Ntcb++;
+   assert(Ntcb < TOTAL_TCBS);
    pthread_mutex_unlock(&tcb_alloc_mutex);
    return &tcbs[i];
 }
@@ -41,13 +42,16 @@ struct tcb* get_tcb_by_identifier(int identifier)
    }
 }
 
-struct tcb* findtcb(struct tcp_hdr *ptcphdr, struct rte_mbuf *mbuf)
+struct tcb* findtcb(struct tcp_hdr *ptcphdr)
 {
    int i;
    struct tcb *ptcb = NULL;
-   int16_t dest_port = 0;
+   uint16_t dest_port = 0;
+   uint16_t src_port = 0;
 
    dest_port = ntohs(ptcphdr->dst_port);
+   src_port = ntohs(ptcphdr->src_port);
+  // src_port = (ptcphdr->src_port);
    //dest_port = (ptcphdr->dst_port);
    //printf("Finding the tcb\n");
    //printf("dest port = %d\n",dest_port); 
@@ -57,9 +61,16 @@ struct tcb* findtcb(struct tcp_hdr *ptcphdr, struct rte_mbuf *mbuf)
   // struct tcp_hdr *ptcphdr = (struct tcp_hdr *) (ip_hdr + sizeof(struct ipv4_hdr)); 
    for(i=0; i<Ntcb; i++) {  // change it to hash type later
       ptcb = &tcbs[i];
-      if(ptcb->dport == dest_port) {
-      
+      printf(" total %d expe %u seen %u\n", Ntcb, ptcb->sport, src_port);
+      printf("expe %d seen %d\n", ptcb->dport, dest_port);
+      if((ptcb->dport == dest_port) && 
+         (ptcb->sport == src_port)) {
+         printf("found\n");
+         return ptcb; 
       }
+   }
+   for(i=0; i<Ntcb; i++) {  // change it to hash type later
+      ptcb = &tcbs[i];
       if(ptcb->state == LISTENING) {
          if((ptcb->dport) == dest_port) {
             //printf("Found a listening tcb. listening port = %d, packet port = %d\n", ptcb->dport, dest_port);
