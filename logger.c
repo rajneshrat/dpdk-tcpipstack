@@ -12,6 +12,7 @@ void InitLogger()
    EnableTrace(ARP, ALL);
    EnableTrace(IP, ALL);
    EnableTrace(TCP, ALL);
+   EnableTrace(SOCKET, ALL);
 }
 
 void EnableTrace(FEATURE Feature, TRACE_LEVEL Level)

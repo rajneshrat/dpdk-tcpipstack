@@ -35,7 +35,7 @@ typedef enum {
   
 struct arp_map {
    uint32_t ipv4_addr;
-   char mac_addr[6];
+   unsigned char mac_addr[6];
    struct arp_map *next;
 };
 

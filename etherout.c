@@ -7,7 +7,7 @@
 #include <stdio.h>
 
 int
-ether_out(char *dst_mac, char *src_mac, uint16_t ether_type, struct rte_mbuf *mbuf)
+ether_out(unsigned char *dst_mac, char *src_mac, uint16_t ether_type, struct rte_mbuf *mbuf)
 {
    int i = 0;
    struct ether_hdr *eth;

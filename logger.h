@@ -8,6 +8,7 @@ typedef enum {
    ARP,
    IP,
    TCP,
+   SOCKET,
    TOTAL_FEATURE,
 
 }FEATURE;

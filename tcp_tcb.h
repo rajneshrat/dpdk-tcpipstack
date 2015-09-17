@@ -9,6 +9,7 @@
 // make mac address also part of it.
 struct tcb
 {
+   int identifier;
    int dport;
    int sport;
    uint32_t ack;
@@ -22,7 +23,6 @@ struct tcb
    TCP_STATE state;
    pthread_mutex_t mutex;
    pthread_cond_t condAccept; 
-   int identifier;
 };
 
 struct tcb* alloc_tcb();

@@ -10,8 +10,8 @@ struct sock_addr {
 };
 
 enum _STREAM_TYPE_{
-   TCP,
-   UDP
+   TCP_STREAM,
+   UDP_STREAM
 };
 
 typedef enum _STREAM_TYPE_ STREAM_TYPE;

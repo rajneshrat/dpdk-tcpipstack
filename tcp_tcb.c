@@ -10,7 +10,7 @@
 #include "tcp_common.h"
 #include <pthread.h>
 
-#define TOTAL_TCBS 120
+#define TOTAL_TCBS 10
 pthread_mutex_t tcb_alloc_mutex;
 
 int Ntcb = 0;
@@ -25,6 +25,7 @@ struct tcb* alloc_tcb()
    Ntcb++;
    assert(Ntcb < TOTAL_TCBS);
    pthread_mutex_unlock(&tcb_alloc_mutex);
+   memset(&tcbs[i], 0, sizeof(struct tcb));
    return &tcbs[i];
 }
 
@@ -42,7 +43,7 @@ struct tcb* get_tcb_by_identifier(int identifier)
    }
 }
 
-struct tcb* findtcb(struct tcp_hdr *ptcphdr)
+struct tcb* findtcb(struct tcp_hdr *ptcphdr, struct ipv4_hdr *hdr)
 {
    int i;
    struct tcb *ptcb = NULL;
@@ -59,13 +60,15 @@ struct tcb* findtcb(struct tcp_hdr *ptcphdr)
   //       sizeof(struct ether_hdr));
    //struct tcp_hdr *ptcphdr = (struct tcp_hdr *) (ip_hdr + sizeof(struct ipv4_hdr)); 
   // struct tcp_hdr *ptcphdr = (struct tcp_hdr *) (ip_hdr + sizeof(struct ipv4_hdr)); 
+
    for(i=0; i<Ntcb; i++) {  // change it to hash type later
       ptcb = &tcbs[i];
-      printf(" total %d expe %u seen %u\n", Ntcb, ptcb->sport, src_port);
-      printf("expe %d seen %d\n", ptcb->dport, dest_port);
+      printf("searching for tcb %u %u %d %d   found %u %u %d %d for %d\n", ntohl(hdr->src_addr), hdr->dst_addr, src_port, dest_port, ptcb->ipv4_src, ptcb->ipv4_dst, ptcb->sport, ptcb->dport, ptcb->identifier);
       if((ptcb->dport == dest_port) && 
-         (ptcb->sport == src_port)) {
-         printf("found\n");
+         (ptcb->sport == src_port) && 
+         (ptcb->ipv4_dst == hdr->dst_addr) &&
+         (ptcb->ipv4_src == ntohl(hdr->src_addr))) {
+         printf("Found stablized port\n");
          return ptcb; 
       }
    }
@@ -73,7 +76,7 @@ struct tcb* findtcb(struct tcp_hdr *ptcphdr)
       ptcb = &tcbs[i];
       if(ptcb->state == LISTENING) {
          if((ptcb->dport) == dest_port) {
-            //printf("Found a listening tcb. listening port = %d, packet port = %d\n", ptcb->dport, dest_port);
+            printf("Found a listening tcb. listening port = %d, packet port = %d\n", ptcb->dport, dest_port);
             return ptcb; 
          }
       }

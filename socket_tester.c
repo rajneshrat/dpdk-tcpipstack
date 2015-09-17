@@ -1,9 +1,10 @@
 #include "socket_interface.h"
+#include "logger.h"
 
 void init_socket_example(int port, uint8_t *ip)
 {
    int i = 0;
-   int socket = socket_open(TCP);
+   int socket = socket_open(TCP_STREAM);
    struct sock_addr addr;
    addr.port = port;
    addr.ip = 0;
@@ -15,7 +16,9 @@ void init_socket_example(int port, uint8_t *ip)
    socket_listen(socket, 5);
    struct sock_addr client;
 //   printf("Waiting for accept\n");
+   logger(SOCKET, NORMAL, "waiting on accept\n");
    socket_accept(socket, &client);
+   logger(SOCKET, NORMAL, "coming off accept\n");
 //   printf("accepted the connection\n");
 }
 

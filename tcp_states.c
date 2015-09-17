@@ -15,28 +15,31 @@ tcpinstate *tcpswitch[TCP_STATES] = {
 };
 
 int
-tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* mbuf)
+tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* mbuf, struct ipv4_hdr *iphdr)
 {
-   printf("tcp_syn_rcv called\n");
+   printf("tcp syn recv state\n");
    return 0;
 }
 
 int
-tcp_listen(struct tcb *ptcb, struct tcp_hdr* mbuf)
+tcp_listen(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr)
 {
-   printf("tcp_listen called\n");
    struct tcb *new_ptcb = NULL;
    new_ptcb = alloc_tcb(); 
    if(new_ptcb == NULL) {
       printf("Null tcb'\n");
       return 0;
    }
-//   memcpy(new_ptcb, ptcb, sizeof(struct tcb));
+   printf("Tcp listen state\n");
+   memcpy(new_ptcb, ptcb, sizeof(struct tcb));
+   new_ptcb->identifier = 10;
    new_ptcb->state = SYN_RECV;
    new_ptcb->dport = ptcb->dport;
-   new_ptcb->sport = mbuf->src_port;
+   new_ptcb->sport = htons(ptcphdr->src_port);
    new_ptcb->ipv4_dst = ptcb->ipv4_dst;
-   new_ptcb->ipv4_src = ptcb->ipv4_src;
+   new_ptcb->ipv4_src = ntohl(iphdr->src_addr);
+//   ptcb->sport = ntohs(ptcphdr->src_port);
+   new_ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;
    // set src port;
    // set ips.
    ptcb->newpTcbOnAccept = new_ptcb;
@@ -50,7 +53,7 @@ tcp_listen(struct tcb *ptcb, struct tcp_hdr* mbuf)
    return 0;
 }
 int
-tcp_closed(struct tcb *ptcb, struct tcp_hdr* mbuf)
+tcp_closed(struct tcb *ptcb, struct tcp_hdr* mbuf, struct ipv4_hdr *iphdr)
 {
   // //printf("tcp_closed called\n");
 

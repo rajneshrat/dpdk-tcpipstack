@@ -212,7 +212,7 @@ print_arp_table()
       print_add(temp->ipv4_addr);
       log_print(ARP, NORMAL, " mac = ");  
       for(i=0; i<6; i++) {
-         log_print(ARP, NORMAL, "%x", temp->mac_addr[i]);
+         log_print(ARP, NORMAL, "%x::", temp->mac_addr[i]);
       }
       log_print(ARP, NORMAL, "\n");
       temp = temp->next;
@@ -248,7 +248,7 @@ add_mac(uint32_t ipv4_addr, unsigned char *mac_addr)
       logger(ARP, ALL, " creating a new arp list.\n");
    }
    temp->ipv4_addr = ipv4_addr;
-   strncpy(temp->mac_addr, mac_addr, 6);
+   memcpy(temp->mac_addr, mac_addr, 6);
    for(i=0;i<6;i++) {
       //printf("%x ", mac_addr);
    }

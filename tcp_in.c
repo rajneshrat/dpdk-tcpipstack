@@ -54,20 +54,19 @@ int tcp_in(struct rte_mbuf *mbuf)
                             sizeof(struct ether_hdr));
    struct tcp_hdr *ptcphdr = (struct tcp_hdr *) ( rte_pktmbuf_mtod(mbuf, unsigned char *) + 
          sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr)); 
-   ptcb = findtcb(ptcphdr);
+   ptcb = findtcb(ptcphdr, hdr);
    if(ptcb == NULL) {
       ++tcpnopcb;
       rte_pktmbuf_free(mbuf);
       logger(TCP, CRITICAL, "found null tcb\n");
       return -1;
    }
-   ptcb->ipv4_src = ntohl(hdr->src_addr);
-   ptcb->sport = ntohs(ptcphdr->src_port);
-   printf("sport = %d\n", ptcb->sport);
-   ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;
+   if(ptcb->state != LISTENING) {
+   }
+   printf("tcb identifier = %d\n", ptcb->identifier);
    if(tcpok(ptcb, mbuf)) {
       logger(TCP, NORMAL, "sending tcp packet\n");
-      tcpswitch[ptcb->state](ptcb, ptcphdr);
+      tcpswitch[ptcb->state](ptcb, ptcphdr, hdr);
       //(tcpswitch[1])(ptcb, mbuf);
    }
    else {
