@@ -17,8 +17,9 @@ void init_socket_example(int port, uint8_t *ip)
    struct sock_addr client;
 //   printf("Waiting for accept\n");
    logger(SOCKET, NORMAL, "waiting on accept\n");
-   socket_accept(socket, &client);
+   int new_socket = socket_accept(socket, &client);
    logger(SOCKET, NORMAL, "coming off accept\n");
+   socket_send(new_socket, "Helloindia", 5);
 //   printf("accepted the connection\n");
 }
 

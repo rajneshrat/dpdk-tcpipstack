@@ -87,3 +87,8 @@ struct tcb* findtcb(struct tcp_hdr *ptcphdr, struct ipv4_hdr *hdr)
    return NULL;
 }
 
+int send_data(char *message, int len)
+{
+//   sendtcppacket(ptcb, mbuf, message, len);
+}
+

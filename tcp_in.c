@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include "tcp_in.h"
 #include "tcp_tcb.h"
+#include "tcp.h"
 #include "tcp_states.h"
 
 int tcpchecksumerror;
@@ -37,7 +38,7 @@ void sendack(struct tcb *ptcb)
    
    //printf(" null\n");
    fflush(stdout);
-   ip_out(ptcb, mbuf); 
+   ip_out(ptcb, mbuf, 0); 
 }
 
 int tcp_in(struct rte_mbuf *mbuf)
@@ -61,8 +62,14 @@ int tcp_in(struct rte_mbuf *mbuf)
       logger(TCP, CRITICAL, "found null tcb\n");
       return -1;
    }
-   if(ptcb->state != LISTENING) {
+   if((ptcb->state == LISTENING) && !(ptcphdr->tcp_flags & SYN)) {
+      printf("Ignoring non syn flag for listen tcb\n");
+      return 0;
    }
+   if((ptcphdr->tcp_flags & FIN)) {
+      sendfin(ptcb);
+   }
+  
    printf("tcb identifier = %d\n", ptcb->identifier);
    if(tcpok(ptcb, mbuf)) {
       logger(TCP, NORMAL, "sending tcp packet\n");

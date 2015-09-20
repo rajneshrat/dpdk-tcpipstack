@@ -65,6 +65,17 @@ socket_accept(int ser_id, struct sock_addr *client_addr)
 }
 
 int
+socket_send(int ser_id, char *message, int len)
+{
+   struct tcb *ptcb = NULL;
+   struct rte_mbuf *mbuf = get_mbuf();
+   ptcb = get_tcb_by_identifier(ser_id);
+   sendtcpdata(ptcb, mbuf, message, len);
+  // sendtcppacket(ptcb, mbuf, message, len);
+  // ptcb->send_data(message, len); 
+}
+
+int
 socket_close(int identifier)
 {
    return 0;

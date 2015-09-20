@@ -37,7 +37,7 @@ uint16_t calculate_checksum(unsigned char *data, int len)
     uint8_t *val = data;
     int i;
     uint32_t sum = 0;
-    for(i=0; i<len/2; i++) {
+    for(i=0; i<(len+1)/2; i++) {
         uint16_t val16 = val[0] & 0xff;
         val16 = val16 << 8 | val[1];
         val = val + 2;
@@ -51,7 +51,7 @@ uint16_t calculate_checksum(unsigned char *data, int len)
 
 
 int
-ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf, struct tcp_hdr *ptcphdr)
+ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf, struct tcp_hdr *ptcphdr, uint8_t data_len)
 {
     unsigned char dest_mac[6];
     //printf("head room3 = %d\n", rte_pktmbuf_headroom(mbuf));
@@ -75,7 +75,7 @@ ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf, struct tcp_hdr *ptcphdr)
     hdr->time_to_live = 127;
   //  hdr->total_length = htons(sizeof(struct ipv4_hdr) + sizeof(struct tcp_hdr) + 4);
     uint8_t tcp_len = (ptcphdr->data_off >> 4) * 4;
-    hdr->total_length = htons( 20 + tcp_len);// htons(sizeof(struct ipv4_hdr) + sizeof(struct tcp_hdr) + 4);
+    hdr->total_length = htons( 20 + tcp_len + data_len);// htons(sizeof(struct ipv4_hdr) + sizeof(struct tcp_hdr) + 4);
     hdr->packet_id = count++;
     hdr->hdr_checksum = htons(calculate_checksum(hdr, sizeof(struct ipv4_hdr)));
 
@@ -83,12 +83,12 @@ ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf, struct tcp_hdr *ptcphdr)
     pseudohdr->dst_ip = hdr->dst_addr; 
     pseudohdr->reserved = 0; 
     pseudohdr->protocol = (IPPROTO_TCP);
-    pseudohdr->len = htons(tcp_len); 
-    char *temp = malloc(sizeof(struct pseudo_tcp_hdr) + tcp_len); 
+    pseudohdr->len = htons(tcp_len + data_len); 
+    char *temp = malloc(sizeof(struct pseudo_tcp_hdr) + tcp_len + data_len); 
    // memset(temp, 0, sizeof(struct pseudo_tcp_hdr) + 20);
     memcpy(temp, pseudohdr, sizeof(struct pseudo_tcp_hdr));
-    memcpy(temp + sizeof(struct pseudo_tcp_hdr), ptcphdr, tcp_len);
-    ptcphdr->cksum = htons(calculate_checksum(temp, sizeof(struct pseudo_tcp_hdr) + tcp_len));
+    memcpy(temp + sizeof(struct pseudo_tcp_hdr), ptcphdr, tcp_len + data_len);
+    ptcphdr->cksum = htons(calculate_checksum(temp, sizeof(struct pseudo_tcp_hdr) + tcp_len + data_len));
 //    ptcphdr->cksum = get_ipv4_psd_sum(hdr); 
     get_mac(ptcb->ipv4_src, dest_mac);
     ether_out(dest_mac, NULL, ETHER_TYPE_IPv4, mbuf);

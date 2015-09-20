@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include "tcp_tcb.h"
+#include "tcp.h"
 
 tcpinstate *tcpswitch[TCP_STATES] = { 
    tcp_closed,
@@ -15,9 +16,13 @@ tcpinstate *tcpswitch[TCP_STATES] = {
 };
 
 int
-tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* mbuf, struct ipv4_hdr *iphdr)
+tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr)
 {
    printf("tcp syn recv state\n");
+   if((ptcphdr->tcp_flags & SYN) || (ptcphdr->tcp_flags & FIN) ) {
+      ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;  // this should add tcp len also.
+   }
+// also increase ack for data. future work.
    return 0;
 }
 
@@ -40,10 +45,12 @@ tcp_listen(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr)
    new_ptcb->ipv4_src = ntohl(iphdr->src_addr);
 //   ptcb->sport = ntohs(ptcphdr->src_port);
    new_ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;
+   new_ptcb->next_seq = 1;
    // set src port;
    // set ips.
    ptcb->newpTcbOnAccept = new_ptcb;
    pthread_mutex_lock(&(ptcb->mutex));
+printf("signaling accept mutex.\n");
    pthread_cond_signal(&(ptcb->condAccept));
    pthread_mutex_unlock(&(ptcb->mutex));
    //printf("sending ack\n");
