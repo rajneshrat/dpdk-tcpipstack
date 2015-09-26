@@ -34,6 +34,8 @@ printf("trying to recv\n");
   recv(clientSocket, buffer, 1024, 0);
 printf("Received");
 
+   printf("trying to send\n");
+   write(clientSocket, "ok bye", 7);
   /*---- Print the received message ----*/
   printf("Data received: %s",buffer);   
 
