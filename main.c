@@ -262,7 +262,7 @@ l2fwd_main_loop(void)
 			portid);
 	}
 
-   portid = 0;//ports ++;
+   portid = 1;//ports ++;
 
 	while (1) {
 

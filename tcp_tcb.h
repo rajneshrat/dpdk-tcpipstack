@@ -15,6 +15,9 @@ struct tcb
    uint32_t ack;
    uint32_t next_seq;
    int WaitingOnAccept;
+   int WaitingOnRead;
+   char *read_buffer;
+   int read_buffer_len;
    struct tcb *newpTcbOnAccept;
    uint32_t ipv4_dst;
    uint32_t ipv4_src;
@@ -22,7 +25,7 @@ struct tcb
    char src_mac[6];
    TCP_STATE state;
    pthread_mutex_t mutex;
-   pthread_cond_t condAccept; 
+   pthread_cond_t condAccept; // used for read also 
 };
 
 struct tcb* alloc_tcb();

@@ -6,6 +6,7 @@
 #include <rte_tcp.h>
 
 #include <stdio.h>
+#include "logger.h"
 #include "tcp_tcb.h"
 #include "tcp_common.h"
 #include <pthread.h>
@@ -35,8 +36,8 @@ struct tcb* get_tcb_by_identifier(int identifier)
    struct tcb *ptcb = NULL;
    for(i=0; i<Ntcb; i++) {  // change it to hash type later
       ptcb = &tcbs[i];
-      //printf("Finding the tcb\n");
-     // printf("identifier is  = %d\n",ptcb->identifier); 
+      //logger(TCB, NORMAL,"Finding the tcb\n");
+     // logger(TCB, NORMAL,"identifier is  = %d\n",ptcb->identifier); 
       if(ptcb->identifier == identifier) {
          return ptcb;
       }
@@ -54,8 +55,8 @@ struct tcb* findtcb(struct tcp_hdr *ptcphdr, struct ipv4_hdr *hdr)
    src_port = ntohs(ptcphdr->src_port);
   // src_port = (ptcphdr->src_port);
    //dest_port = (ptcphdr->dst_port);
-   //printf("Finding the tcb\n");
-   //printf("dest port = %d\n",dest_port); 
+   //logger(TCB, NORMAL,"Finding the tcb\n");
+   //logger(TCB, NORMAL,"dest port = %d\n",dest_port); 
 //   struct ipv4_hdr *ip_hdr =  (struct ipv4_hdr *)(rte_pktmbuf_mtod(mbuf, unsigned char *) +
   //       sizeof(struct ether_hdr));
    //struct tcp_hdr *ptcphdr = (struct tcp_hdr *) (ip_hdr + sizeof(struct ipv4_hdr)); 
@@ -63,12 +64,13 @@ struct tcb* findtcb(struct tcp_hdr *ptcphdr, struct ipv4_hdr *hdr)
 
    for(i=0; i<Ntcb; i++) {  // change it to hash type later
       ptcb = &tcbs[i];
-      printf("searching for tcb %u %u %d %d   found %u %u %d %d for %d\n", ntohl(hdr->src_addr), hdr->dst_addr, src_port, dest_port, ptcb->ipv4_src, ptcb->ipv4_dst, ptcb->sport, ptcb->dport, ptcb->identifier);
+      logger(TCB, NORMAL,"searching for tcb %u %u %d %d   found %u %u %d %d for %d\n", ntohl(hdr->src_addr), hdr->dst_addr, src_port, dest_port, ptcb->ipv4_src, ptcb->ipv4_dst, ptcb->sport, ptcb->dport, ptcb->identifier);
+   //   logger(TCP, NORMAL, "sending syn-ack packet\n");
       if((ptcb->dport == dest_port) && 
          (ptcb->sport == src_port) && 
          (ptcb->ipv4_dst == hdr->dst_addr) &&
          (ptcb->ipv4_src == ntohl(hdr->src_addr))) {
-         printf("Found stablized port\n");
+         logger(TCB, NORMAL,"Found stablized port\n");
          return ptcb; 
       }
    }
@@ -76,13 +78,13 @@ struct tcb* findtcb(struct tcp_hdr *ptcphdr, struct ipv4_hdr *hdr)
       ptcb = &tcbs[i];
       if(ptcb->state == LISTENING) {
          if((ptcb->dport) == dest_port) {
-            printf("Found a listening tcb. listening port = %d, packet port = %d\n", ptcb->dport, dest_port);
+            logger(TCB, NORMAL,"Found a listening tcb. listening port = %d, packet port = %d\n", ptcb->dport, dest_port);
             return ptcb; 
          }
       }
          
    }
-   //printf("return NULL tcb\n");
+   //logger(TCB, NORMAL,"return NULL tcb\n");
    fflush(stdout);
    return NULL;
 }

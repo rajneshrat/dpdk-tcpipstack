@@ -9,6 +9,7 @@ typedef enum {
    IP,
    TCP,
    SOCKET,
+   TCB,
    TOTAL_FEATURE,
 
 }FEATURE;

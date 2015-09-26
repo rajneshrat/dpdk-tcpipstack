@@ -9,10 +9,10 @@ struct LoggerFeature *LogFeature;
 void InitLogger()
 {
    LogFeature = calloc(TOTAL_FEATURE, sizeof(struct LoggerFeature));
-   EnableTrace(ARP, ALL);
-   EnableTrace(IP, ALL);
-   EnableTrace(TCP, ALL);
-   EnableTrace(SOCKET, ALL);
+   //EnableTrace(ARP, ALL);
+   //EnableTrace(IP, ALL);
+   //EnableTrace(TCP, ALL);
+   //EnableTrace(SOCKET, ALL);
 }
 
 void EnableTrace(FEATURE Feature, TRACE_LEVEL Level)

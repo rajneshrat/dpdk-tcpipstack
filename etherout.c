@@ -24,5 +24,5 @@ ether_out(unsigned char *dst_mac, char *src_mac, uint16_t ether_type, struct rte
    eth->s_addr.addr_bytes[4] = 0x96;
    eth->s_addr.addr_bytes[5] = 0x24;
 //   }
-   send_packet_out(mbuf, 0);
+   send_packet_out(mbuf, 1);
 }

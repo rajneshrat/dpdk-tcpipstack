@@ -76,6 +76,27 @@ socket_send(int ser_id, char *message, int len)
 }
 
 int
+socket_read(int ser_id, char *buffer, int len)
+{
+// check all corner case before going further
+//   assert(ptcb->WaitingOnRead == 0);
+   struct tcb *ptcb = NULL;
+   ptcb = get_tcb_by_identifier(ser_id);
+ //  if(ptcb->WaitingOnAccept) {
+   //   return 0;
+      // don't allow multiple accepts hold on same socket.
+  // }
+   pthread_mutex_lock(&(ptcb->mutex));
+   ptcb->WaitingOnRead = 1;
+   pthread_cond_wait(&(ptcb->condAccept), &(ptcb->mutex));
+   memcpy(buffer, ptcb->read_buffer, ptcb->read_buffer_len); 
+   ptcb->WaitingOnRead = 0;
+   pthread_mutex_unlock(&(ptcb->mutex));
+   
+   return 10; 
+}
+
+int
 socket_close(int identifier)
 {
    return 0;

@@ -11,6 +11,7 @@ void init_socket_example(int port, uint8_t *ip)
    for(i=0; i<4; i++) {
       addr.ip |= ip[i] << i*8;
    }
+   char buffer[11];
 //   printf("ip is %x\n", addr.ip);
    socket_bind(socket, &addr);
    socket_listen(socket, 5);
@@ -19,7 +20,10 @@ void init_socket_example(int port, uint8_t *ip)
    logger(SOCKET, NORMAL, "waiting on accept\n");
    int new_socket = socket_accept(socket, &client);
    logger(SOCKET, NORMAL, "coming off accept\n");
-   socket_send(new_socket, "Helloindia", 5);
+   socket_send(new_socket, "Hello World", 12);
+   printf("waiting on socket read\n");
+   socket_read(new_socket, buffer, 10);
+   printf("received from socket %s\n", buffer);
 //   printf("accepted the connection\n");
 }
 

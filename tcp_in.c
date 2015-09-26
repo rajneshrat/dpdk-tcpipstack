@@ -21,6 +21,7 @@ int tcpok(struct tcb *ptcb, struct rte_mbuf *mbuf)
    return 1;
 }
 
+#if 0
 void sendack(struct tcb *ptcb)
 {
    struct rte_mbuf *mbuf = get_mbuf();
@@ -40,6 +41,7 @@ void sendack(struct tcb *ptcb)
    fflush(stdout);
    ip_out(ptcb, mbuf, 0); 
 }
+#endif
 
 int tcp_in(struct rte_mbuf *mbuf)
 {
@@ -73,12 +75,13 @@ int tcp_in(struct rte_mbuf *mbuf)
    printf("tcb identifier = %d\n", ptcb->identifier);
    if(tcpok(ptcb, mbuf)) {
       logger(TCP, NORMAL, "sending tcp packet\n");
-      tcpswitch[ptcb->state](ptcb, ptcphdr, hdr);
+      tcpswitch[ptcb->state](ptcb, ptcphdr, hdr, mbuf);
       //(tcpswitch[1])(ptcb, mbuf);
    }
    else {
-      logger(TCP, NORMAL, "sending syn-ack packet\n");
-      sendsynack(ptcb);
+   //   logger(TCP, NORMAL, "sending syn-ack packet\n");
+     // sendsynack(ptcb);
+   // send ack future work
    }
    return 0;
 }
