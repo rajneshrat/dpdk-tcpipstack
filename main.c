@@ -238,6 +238,7 @@ l2fwd_main_loop(void)
    static int  ports = 0;
    printf("Call for %d\n.", lcore_id);
 	if ((lcore_id == 1)) {  // core 1 dedicaated for my socket example.
+      printf("using core 1 for server socket listner\n");
 		RTE_LOG(INFO, L2FWD, "lcore %u has nothing to do\n", lcore_id);
       uint8_t ip[4];
       ip[0] = 192;
@@ -248,6 +249,11 @@ l2fwd_main_loop(void)
       //init_socket_example(24, ip); // this call is blocking call. 
 	//	return;
 	}
+   if(lcore_id == 3) {
+      // core 3 for cli. nneed to create multiple threads here for mgmt tasks.
+      printf("using core 3 for cli\n");// what a waste of resource. :)
+      cli_server_init();
+   }
    if(lcore_id != 2) {  // doing all on core 2
       printf("Ignoring core id %d\n", lcore_id);
       return;
@@ -489,6 +495,10 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 
 void init_socket_example(int port, uint8_t *ip);
 
+int GetTotalInterfaces()
+{
+	return rte_eth_dev_count();
+}
 int
 MAIN(int argc, char **argv)
 {
@@ -649,6 +659,7 @@ MAIN(int argc, char **argv)
 				l2fwd_ports_eth_addr[portid].addr_bytes[3],
 				l2fwd_ports_eth_addr[portid].addr_bytes[4],
 				l2fwd_ports_eth_addr[portid].addr_bytes[5]);
+      SetInterfaceHW(l2fwd_ports_eth_addr[portid].addr_bytes, portid);
 
 		/* initialize port stats */
 		memset(&port_statistics, 0, sizeof(port_statistics));

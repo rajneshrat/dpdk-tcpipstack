@@ -22,6 +22,17 @@ uint32_t GetIntAddFromChar(unsigned char *address, uint8_t order)
    return ip_add;
 }
 
+void SetInterfaceHW(uint8_t *MacAddr, uint8_t interface)
+{
+   printf("setting interface %u\n", interface);
+   if(interface < MAX_INTERFACES) {
+      memcpy(InterfaceHwAddr[interface], MacAddr, HW_ADDRESS_LEN);
+   }
+   else {
+      printf("ERROR :: interfcae number more than max.\n");
+   }
+}
+
 void InitInterface(struct Interface *IfList[], UINT Count)
 {
    struct Interface *ptr = NULL;
