@@ -14,6 +14,8 @@ ether_in(struct rte_mbuf *mbuf)
 
 	eth = rte_pktmbuf_mtod(mbuf, struct ether_hdr *);
 
+//   int *data = mbuf->userdata;
+   
    switch(ntohs(eth->ether_type)) {
       case ETHER_TYPE_ARP : 
          logger(ARP, NORMAL, "seen arp packet\n");

@@ -86,10 +86,16 @@ socket_read(int ser_id, char *buffer, int len)
    //   return 0;
       // don't allow multiple accepts hold on same socket.
   // }
+printf("scoket read called for identifier %d\n", ser_id);
    pthread_mutex_lock(&(ptcb->mutex));
    ptcb->WaitingOnRead = 1;
    pthread_cond_wait(&(ptcb->condAccept), &(ptcb->mutex));
-   memcpy(buffer, ptcb->read_buffer, ptcb->read_buffer_len); 
+   if(len < ptcb->read_buffer_len) {
+      printf("ERROR: Failed to get all buffer data from read.\n");
+      memcpy(buffer, ptcb->read_buffer, len); 
+   }   
+   else 
+      memcpy(buffer, ptcb->read_buffer, ptcb->read_buffer_len); 
    ptcb->WaitingOnRead = 0;
    pthread_mutex_unlock(&(ptcb->mutex));
    

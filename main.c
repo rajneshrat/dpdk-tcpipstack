@@ -285,6 +285,7 @@ l2fwd_main_loop(void)
   //  printf(" packets re %d port %d\n", nb_rx, portid);
 			if(nb_rx) {
             for(i=0;i<nb_rx;i++) {
+//               pkts_burst[i].user_data = malloc(sizeof(int));
                ether_in(pkts_burst[i]);
 	            //rte_eth_tx_burst(portid, 0, &pkts_burst[i], 1);
 	         }
@@ -684,7 +685,8 @@ MAIN(int argc, char **argv)
    temp.IP[3] = 2;
    IfList[0] = &temp;
    InitLogger();
-   InitInterface(IfList, 1);
+   //InitInterface(IfList, 1);
+   AddInterface(IfList[0]);
 
 #if 0
 	/* launch per-lcore init on every lcore */

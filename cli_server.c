@@ -4,6 +4,7 @@
 #include<arpa/inet.h> 
 #include<unistd.h>  
 #include "ether.h"
+#include "cli_server.h"
 
 void showcommand(int socket_id)
 {
@@ -15,24 +16,92 @@ void command_config(int socket_id)
 {
    int TotalInterfaces = GetTotalInterfaces();
    int i;
+   int index = 0;
    char buffer[1024];
-   sprintf(buffer, "total interfaces available = %d\n", TotalInterfaces);
-   write(socket_id, buffer, strlen(buffer));
+   index += sprintf(buffer + index, "total interfaces available = %d\n", TotalInterfaces);
    for(i=0;i<TotalInterfaces;i++) {
-      sprintf(buffer, "configuring interface %d\n", i);
-      write(socket_id, buffer, strlen(buffer));
+      index += sprintf(buffer + index, "configuring interface %d\n", i);
    }
+   write(socket_id, buffer, strlen(buffer));
 } 
+
+void show_interfaces(int socket_id)
+{
+   int TotalInterfaces = GetTotalInterfaces();
+   int i, j;
+   int index = 0;
+   char buffer[1024];
+   index += sprintf(buffer + index, "total interfaces available = %d\n", TotalInterfaces);
+   for(i=0;i<TotalInterfaces;i++) {
+      index += sprintf(buffer + index, "mac for interface %d = ", i);
+      for(j=0;j<6;j++) {
+         index += sprintf(buffer + index, "%02X", InterfaceHwAddr[i][j]);
+      }
+      index += sprintf(buffer + index, "\n");
+   }
+   write(socket_id, buffer, strlen(buffer));
+}
+
+void command_not_found(int socket_id)
+{
+   int TotalInterfaces = GetTotalInterfaces();
+   int index = 0;
+   char buffer[1024];
+   index += sprintf(buffer + index, " ****Command not found. Enter help for command list.****\n");
+   write(socket_id, buffer, strlen(buffer));
+}
+
+void set_interface(int socket_id, int id)
+{
+   int TotalInterfaces = GetTotalInterfaces();
+   int i;
+   int index = 0;
+   char buffer[1024];
+   index += sprintf(buffer + index, "total interfaces available = %d\n", TotalInterfaces);
+   for(i=0;i<TotalInterfaces;i++) {
+      index += sprintf(buffer + index, "configuring interface %d\n", i);
+   }
+   write(socket_id, buffer, strlen(buffer));
+}
+  
  
-void command_showinterfacemac()
+void command_showinterfacemac(int socket_id)
 {
    int i, j;
+   int index = 0;
+   char buffer[1024];
    for(i=0;i<2;i++) {
       for(j=0;j<6;j++) {
-         printf("%02X", InterfaceHwAddr[i][j]);
+         index += sprintf(buffer + index, "%02X", InterfaceHwAddr[i][j]);
       }
-      printf("\n");
+      index += sprintf(buffer + index, "\n");
    }
+   write(socket_id, buffer, strlen(buffer));
+}
+
+int perform_command(int socket_id, char *command)
+{
+   if(!strcmp(command, "showinterface")) {
+      show_interfaces(socket_id);
+      return 0;
+   }
+   if(!strcmp(command, "help")) {
+      show_help(socket_id);
+      return 0;
+   }
+   command_not_found(socket_id);
+   return -1;
+}
+
+int show_help(int socket_id)
+{
+   int i, j;
+   int index = 0;
+   char buffer[1024];
+   index += sprintf(buffer + index, "showinterface\n");
+   index += sprintf(buffer + index, "configinterface\n");
+   index += sprintf(buffer + index, "help\n");
+   write(socket_id, buffer, strlen(buffer));
 }
 
 int cli_server_init()
@@ -88,9 +157,10 @@ int cli_server_init()
         //write(client_sock , client_message , strlen(client_message));
       printf("client sent command %s\n", client_message);
     //    showcommand(client_sock);
+      perform_command(client_sock, client_message);
      // command_config(client_sock);
-      command_showinterfacemac();
-      //  write(client_sock , "client_message\n>" , strlen(client_message));
+      //command_showinterfacemac(client_sock);
+      //write(client_sock , "client_message\n>" , strlen(client_message));
     }
      
     if(read_size == 0)

@@ -24,6 +24,7 @@ void init_socket_example(int port, uint8_t *ip)
    printf("waiting on socket read\n");
    socket_read(new_socket, buffer, 10);
    printf("received from socket %s\n", buffer);
+   socket_close(new_socket);
 //   printf("accepted the connection\n");
 }
 

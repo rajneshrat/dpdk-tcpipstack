@@ -43,8 +43,11 @@ tcp_established(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphd
       ptcb->read_buffer_len = datalen;
       memcpy(ptcb->read_buffer, data_buffer, datalen); 
       pthread_mutex_lock(&(ptcb->mutex));
+      if(ptcb->WaitingOnRead) {
 printf("signaling accept mutex.\n");
-      pthread_cond_signal(&(ptcb->condAccept));
+         pthread_cond_signal(&(ptcb->condAccept));
+         ptcb->WaitingOnRead = 0;
+      }
       pthread_mutex_unlock(&(ptcb->mutex));
     //  free(ptcb->read_buffer);
    }

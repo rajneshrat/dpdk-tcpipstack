@@ -47,6 +47,7 @@ send_arp_reply(unsigned char *src_pr_add, unsigned char *dst_pr_add)
    struct Interface *temp = NULL;
    temp = InterfaceList;
    while(temp && ip_add != GetIntAddFromChar(temp->IP, 1)) {
+      printf("Checking for arp ip %d found %d", ip_add, GetIntAddFromChar(temp->IP, 1));
       temp = temp->Next;
    }
    if(temp == NULL) {
@@ -177,7 +178,7 @@ send_arp(struct arp *arp_pkt)
      // memcpy(&eth->d_addr.addr_bytes[0], arp_pkt->src_hw_add, sizeof(arp_pkt->hw_len));
       memcpy(&eth->s_addr.addr_bytes[0], arp_pkt->src_hw_add, sizeof(arp_pkt->hw_len));
    }
-   send_packet_out(mbuf, 0);
+   send_packet_out(mbuf, 1);
 }
 
 int
