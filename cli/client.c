@@ -2,7 +2,11 @@
 #include<string.h>
 #include<sys/socket.h>
 #include<arpa/inet.h>
- 
+
+void ShowCommandPrompt ()
+{
+   printf("\n>>>>  ");
+} 
 int main(int argc , char *argv[])
 {
     int sock;
@@ -30,6 +34,7 @@ int main(int argc , char *argv[])
      
     while(1)
     {
+        ShowCommandPrompt();
         scanf("%s" , message);
          
         if( send(sock , message , strlen(message) , 0) < 0)
