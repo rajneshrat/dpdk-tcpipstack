@@ -62,23 +62,22 @@ ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf, struct tcp_hdr *ptcphdr, uint8_t
     memset(pseudohdr, 0, sizeof(struct pseudo_tcp_hdr));
     ptcphdr->cksum = 0;
     static uint32_t count = 0;
-    if(hdr == NULL) {
-        //printf("ip header is null\n");
-    //    fflush(stdout);
-    }
-    hdr->src_addr = ptcb->ipv4_dst;  // for outgoing src will be dest.
-    //printf("dst ip is %x\n", ptcb->ipv4_dst);
-    hdr->dst_addr = htonl(ptcb->ipv4_src);
-    hdr->version_ihl = 4 << 4 | 5;
-    hdr->next_proto_id = IPPROTO_TCP;
-    hdr->hdr_checksum = 0;
-    hdr->time_to_live = 127;
-  //  hdr->total_length = htons(sizeof(struct ipv4_hdr) + sizeof(struct tcp_hdr) + 4);
     uint8_t tcp_len = (ptcphdr->data_off >> 4) * 4;
-    hdr->total_length = htons( 20 + tcp_len + data_len);// htons(sizeof(struct ipv4_hdr) + sizeof(struct tcp_hdr) + 4);
-    hdr->packet_id = count++;
-    hdr->hdr_checksum = htons(calculate_checksum(hdr, sizeof(struct ipv4_hdr)));
-
+    if(ptcb != NULL) { // do assert if it is null;
+            //printf("ip header is null\n");
+        //    fflush(stdout);
+        hdr->src_addr = ptcb->ipv4_dst;  // for outgoing src will be dest.
+        //printf("dst ip is %x\n", ptcb->ipv4_dst);
+        hdr->dst_addr = htonl(ptcb->ipv4_src);
+        hdr->version_ihl = 4 << 4 | 5;
+        hdr->next_proto_id = IPPROTO_TCP;
+        hdr->hdr_checksum = 0;
+        hdr->time_to_live = 127;
+   // //  hdr->total_length = htons(sizeof(struct ipv4_hdr) + sizeof(struct tcp_hdr) + 4);
+        hdr->total_length = htons( 20 + tcp_len + data_len);// htons(sizeof(struct ipv4_hdr) + sizeof(struct tcp_hdr) + 4);
+        hdr->packet_id = count++;
+        hdr->hdr_checksum = htons(calculate_checksum(hdr, sizeof(struct ipv4_hdr)));
+    }
     pseudohdr->src_ip = hdr->src_addr;
     pseudohdr->dst_ip = hdr->dst_addr; 
     pseudohdr->reserved = 0; 

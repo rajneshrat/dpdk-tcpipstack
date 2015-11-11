@@ -105,5 +105,7 @@ printf("scoket read called for identifier %d\n", ser_id);
 int
 socket_close(int identifier)
 {
+   printf("closing tcb\n");
+   remove_tcb(identifier);
    return 0;
 }

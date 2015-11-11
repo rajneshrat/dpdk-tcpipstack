@@ -51,12 +51,38 @@ void command_not_found(int socket_id)
    write(socket_id, buffer, strlen(buffer));
 }
 
-void set_interface(int socket_id, int id)
+void add_ip(int socket_id, char *Ip)
 {
    int TotalInterfaces = GetTotalInterfaces();
-   int i;
+   int i, j = 0;
+   int num = 0;
    int index = 0;
    char buffer[1024];
+   struct Interface *IfList;
+   struct Interface temp;
+   temp.InterfaceNumber = 0;
+printf("IP is %s\n", Ip);
+   for(i=0;i<4;i++) {
+      num = 0;
+      while((Ip[j] != '.' ) && (Ip[j] != '\0') && (Ip[j] != ' ')) {
+         num = num * 10 + (Ip[j] - 48);
+         j++;
+      }
+      printf("%d %d " ,i, num);
+      temp.IP[i] = num;
+      if(Ip[j] == '\0' || Ip[j] == ' ') {
+         if(i != 3) {
+            printf("Error : failed to read ip properly %d\n", i);
+         }
+         break;
+      }
+      j++;
+   //   temp.HwAddress[i] = 0x01;
+   }
+   InitLogger();
+   //InitInterface(IfList, 1);
+printf("confiuring interface\n");
+   AddInterface(&temp);
    index += sprintf(buffer + index, "total interfaces available = %d\n", TotalInterfaces);
    for(i=0;i<TotalInterfaces;i++) {
       index += sprintf(buffer + index, "configuring interface %d\n", i);
@@ -79,10 +105,24 @@ void command_showinterfacemac(int socket_id)
    write(socket_id, buffer, strlen(buffer));
 }
 
-int perform_command(int socket_id, char *command)
+int perform_command(int socket_id, char *input)
 {
+   char command[1024];
+   int i = 0;
+   printf("input is %s\n", input);
+   while(input[i] != '\0' && input[i] != ' ') {
+      command[i] = input[i];
+      i++;
+   }
+   command[i] = '\0';
    if(!strcmp(command, "showinterface")) {
       show_interfaces(socket_id);
+      return 0;
+   }
+   if(!strcmp(command, "addip")) {
+      i++;
+      printf("parameter is %s\n", input + i);
+      add_ip(socket_id, input + i);
       return 0;
    }
    if(!strcmp(command, "help")) {

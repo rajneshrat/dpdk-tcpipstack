@@ -5,6 +5,7 @@
 #include "tcp_states.h"
 #include <sys/types.h>
 #include <inttypes.h>
+extern int Ntcb;
 
 // make mac address also part of it.
 struct tcb

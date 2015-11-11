@@ -676,7 +676,7 @@ MAIN(int argc, char **argv)
    struct Interface temp;
    int i;
    for(i=0;i<6;i++) {
-      temp.HwAddress[i] = 0x01;
+   //   temp.HwAddress[i] = 0x01;
    }
    temp.InterfaceNumber = 1;
    temp.IP[0] = 192;
