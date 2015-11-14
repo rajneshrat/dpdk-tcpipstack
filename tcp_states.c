@@ -14,7 +14,7 @@ tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, s
 {
    printf("tcp syn recv state\n");
    if((ptcphdr->tcp_flags & SYN) || (ptcphdr->tcp_flags & FIN) ) {
-      ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;  // this should add tcp len also.
+      ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;  // this should add tcp len also. but not needed for syn-ack.
    }
    ptcb->state = TCP_ESTABLISHED;
 // also increase ack for data. future work.
@@ -27,6 +27,10 @@ tcp_established(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphd
    printf("tcp established state\n");
    if((ptcphdr->tcp_flags & SYN) || (ptcphdr->tcp_flags & FIN) ) {
       ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;  // this should add tcp len also.
+   }
+   if(ptcphdr->tcp_flags & FIN) {
+      ptcb->state = TCP_FIN_2;
+  //change state to tcpfin1 
    }
    int tcp_len = (ptcphdr->data_off >> 4) * 4;
    char *data =  (char *)(rte_pktmbuf_mtod(mbuf, unsigned char *) + 
@@ -91,14 +95,44 @@ printf("signaling accept mutex.\n");
 int
 tcp_closed(struct tcb *ptcb, struct tcp_hdr* tcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {
+   remove_tcb(ptcb->identifier);
   // //printf("tcp_closed called\n");
 
 }
+
+int
+tcp_fin2(struct tcb *ptcb, struct tcp_hdr* tcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
+{
+   printf("In tcp fin state.\n");
+     sendfin(ptcb);  // future, remove it from here.
+   if(ptcb->state == TCP_FIN_2) {
+      ptcb->state = TCP_STATE_CLOSED;
+   }
+   else {
+      ptcb->state = TCP_STATE_FIN_1;
+   }
+}
+
+int
+tcp_fin1(struct tcb *ptcb, struct tcp_hdr* tcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
+{
+   printf("In tcp fin1 state.\n");
+   if(ptcb->state == TCP_STATE_FIN_1) {
+      ptcb->state = TCP_STATE_CLOSED;
+   }
+   else {
+      ptcb->state = TCP_FIN_2;
+   }
+}
+      
+  // //printf("tcp_closed called\n");
 
 tcpinstate *tcpswitch[TCP_STATES] = { // the order of function must match with tcp states order. future work add assert if they differ 
    tcp_closed,
    tcp_listen,
 //   tcp_syn_sent,
    tcp_syn_rcv,
-   tcp_established
+   tcp_established,
+   tcp_fin1,
+   tcp_fin2  // responder (syn-ack side) sent fin.
 };

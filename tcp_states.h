@@ -11,10 +11,12 @@ int tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* mbuf, struct ipv4_hdr *);
 int tcp_established(struct tcb *ptcb, struct tcp_hdr* mbuf, struct ipv4_hdr *);
 #endif
 enum TCP_STATE_{
-   CLOSED,
+   TCP_STATE_CLOSED,
    LISTENING,
    SYN_RECV,
    TCP_ESTABLISHED,
+   TCP_STATE_FIN_1,
+   TCP_FIN_2,
    TCP_STATES,
 };
 

@@ -88,12 +88,13 @@ int tcp_in(struct rte_mbuf *mbuf)
       return -1;
    }
    if((ptcb->state == LISTENING) && !(ptcphdr->tcp_flags & SYN)) {
+      rte_pktmbuf_free(mbuf);
       send_reset(hdr, ptcphdr);
       printf("Ignoring non syn flag for listen tcb\n");
       return 0;
    }
    if((ptcphdr->tcp_flags & FIN)) {
-      sendfin(ptcb);
+    //  sendfin(ptcb);  // future, remove it from here.
    }
   
    printf("tcb identifier = %d\n", ptcb->identifier);

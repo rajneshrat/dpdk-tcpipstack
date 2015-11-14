@@ -1,6 +1,7 @@
 #ifndef __TCP_TCB_H__
 #define __TCP_TCB_H__
 #include "tcp_common.h"
+#include "tcp_windows.h"
 #include <pthread.h>
 #include "tcp_states.h"
 #include <sys/types.h>
@@ -24,6 +25,7 @@ struct tcb
    uint32_t ipv4_src;
    char dest_mac[6];
    char src_mac[6];
+   ReceiveWindow *RecvWindow;
    TCP_STATE state;
    pthread_mutex_t mutex;
    pthread_cond_t condAccept; // used for read also 

@@ -106,6 +106,6 @@ int
 socket_close(int identifier)
 {
    printf("closing tcb\n");
-   remove_tcb(identifier);
+ //  remove_tcb(identifier);
    return 0;
 }
