@@ -3,7 +3,7 @@
 #include <sys/types.h>
 #include <inttypes.h>
 struct SequenceLengthPair{
-   uint16_t SequenceNumber;
+   uint32_t SequenceNumber;
    uint16_t Length;
    struct SequenceLengthPair *Next;
 };
@@ -11,7 +11,7 @@ struct SequenceLengthPair{
 struct ReceiveWindow_ {
    int MaxSize;
    int CurrentSize;
-   uint16_t StartSequenceNumber; // needed for buffer maangament
+   uint32_t StartSequenceNumber; // needed for buffer maangament
    struct SequenceLengthPair *SeqPairs;
    unsigned char *Data;
 };

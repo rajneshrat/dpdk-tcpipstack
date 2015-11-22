@@ -4,14 +4,37 @@
 #include "types.h"
 #include "tcp_common.h"
 #include <pthread.h>
+#include <rte_mempool.h>
 
+
+static struct rte_ring *socket_tcb_ring_recv = NULL;
+static const char *TCB_TO_SOCKET = "TCB_TO_SOCKET";
+static const char *_MSG_POOL = "MSG_POOL";
+static struct rte_mempool *buffer_message_pool;
+void InitSocketInterface()
+{
+   socket_tcb_ring_recv = rte_ring_lookup(TCB_TO_SOCKET);
+   buffer_message_pool = rte_mempool_lookup(_MSG_POOL);
+   if(socket_tcb_ring_recv == NULL) {
+      printf ("ERROR **** Failed to set scoket tcb ring.\n");
+   }
+   else {
+      printf("Socket tcb ring recv side OK\n");
+   }
+   if(buffer_message_pool == NULL) {
+      printf("ERROR **** socket tcb Message pool failed\n");
+   }
+   else {
+      printf("socket tcb recv side OK.\n");
+   }
+}
 
 int 
 socket_open(STREAM_TYPE stream)
 {
    struct tcb *ptcb;
-
-   ptcb = alloc_tcb();
+// future set this as default instead of 2000.
+   ptcb = alloc_tcb(2000, 2000);
    return ptcb->identifier; 
 }
 
@@ -86,7 +109,7 @@ socket_read(int ser_id, char *buffer, int len)
    //   return 0;
       // don't allow multiple accepts hold on same socket.
   // }
-printf("scoket read called for identifier %d\n", ser_id);
+   printf("scoket read called for identifier %d\n", ser_id);
    pthread_mutex_lock(&(ptcb->mutex));
    ptcb->WaitingOnRead = 1;
    pthread_cond_wait(&(ptcb->condAccept), &(ptcb->mutex));
@@ -100,6 +123,20 @@ printf("scoket read called for identifier %d\n", ser_id);
    pthread_mutex_unlock(&(ptcb->mutex));
    
    return 10; 
+}
+
+int socket_read_nonblock(int ser_id, unsigned char *buffer)
+{
+   void *msg;
+   while (rte_ring_dequeue(socket_tcb_ring_recv, &msg) < 0){
+      usleep(5);
+      continue;
+   }
+   printf("Received '%s'\n",(char *)msg);
+   memcpy(buffer, msg, strlen(msg));
+   rte_mempool_put(buffer_message_pool, msg);
+ 
+   return strlen(msg);//GetData(ser_id, buffer);
 }
 
 int

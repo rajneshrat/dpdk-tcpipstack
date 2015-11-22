@@ -46,6 +46,7 @@ tcp_established(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphd
       ptcb->read_buffer = (char *) malloc(datalen);
       ptcb->read_buffer_len = datalen;
       memcpy(ptcb->read_buffer, data_buffer, datalen); 
+      PushData(ptcb->read_buffer, ntohl(ptcphdr->sent_seq), datalen, ptcb);
       pthread_mutex_lock(&(ptcb->mutex));
       if(ptcb->WaitingOnRead) {
 printf("signaling accept mutex.\n");
@@ -63,7 +64,7 @@ int
 tcp_listen(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {
    struct tcb *new_ptcb = NULL;
-   new_ptcb = alloc_tcb(); 
+   new_ptcb = alloc_tcb(2000, 2000); 
    if(new_ptcb == NULL) {
       printf("Null tcb'\n");
       return 0;

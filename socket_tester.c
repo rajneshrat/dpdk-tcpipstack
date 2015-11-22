@@ -6,10 +6,28 @@ int new_socket = 0;
 void *DoWork(void *test)
 {
    char buffer[11];
+   int len = 0;
    logger(SOCKET, NORMAL, "coming off accept\n");
    socket_send(new_socket, "Hello World", 12);
    printf("waiting on socket read\n");
+#if 0
    socket_read(new_socket, buffer, 10);
+   printf("received from socket %s\n", buffer);
+#endif
+   while(1) {
+      len = socket_read_nonblock(new_socket, buffer);
+      if(len < 0) {
+         printf("socket closed\n");
+         break;
+      }
+      if(len==0) {
+         printf("nothing to show\n");
+      }
+      else {
+         printf("received from socket %s\n", buffer);
+      }
+      usleep(10);
+   }
    printf("received from socket %s\n", buffer);
    socket_close(new_socket);
    return NULL;

@@ -1,8 +1,41 @@
 #include "tcp_windows.h"
 #include "types.h"
 #include "tcp_tcb.h"
+#include <rte_ring.h>
+#include <rte_mempool.h>
 
-int AdjustPair(ReceiveWindow *Window, uint16_t StartSeqNumber, uint16_t Length)
+static struct rte_ring *socket_tcb_ring_send;
+
+static const char *TCB_TO_SOCKET = "TCB_TO_SOCKET";
+static const char *_MSG_POOL = "MSG_POOL";
+const unsigned int pool_size = 1024;
+const unsigned int socket_tcb_ring_size = 1024;
+const unsigned int buffer_size = 1500;
+static struct rte_mempool *buffer_message_pool;
+
+void InitSocketTcbRing()
+{
+   socket_tcb_ring_send = rte_ring_create(TCB_TO_SOCKET, socket_tcb_ring_size, SOCKET_ID_ANY, 0);
+   buffer_message_pool = rte_mempool_create(_MSG_POOL, pool_size,
+            buffer_size, 32, 0,
+            NULL, NULL, NULL, NULL,
+            SOCKET_ID_ANY, 0);
+   if(socket_tcb_ring_send == NULL) {
+      printf ("ERROR **** Failed to set scoket tcb ring send side.\n");
+   }
+   else {
+      printf("Socket tcb ring send side OK\n");
+   }
+   if(buffer_message_pool == NULL) {
+      printf("ERROR **** socket tcb Message pool send side failed\n");
+   }
+   else {
+      printf("socket tcb send side OK.\n");
+   }
+}
+
+
+int AdjustPair(ReceiveWindow *Window, uint32_t StartSeqNumber, uint16_t Length)
 {
    struct SequenceLengthPair *Pair = Window->SeqPairs;
    struct SequenceLengthPair *LastPair = NULL;
@@ -12,7 +45,7 @@ int AdjustPair(ReceiveWindow *Window, uint16_t StartSeqNumber, uint16_t Length)
       Pair = Pair->Next;
    }
    Pair = LastPair;
-   if((Pair->SequenceNumber + Pair->Length) > StartSeqNumber) {  // if we fall inside existing pair
+   if(Pair && (Pair->SequenceNumber + Pair->Length) > StartSeqNumber) {  // if we fall inside existing pair
       if(Pair->Length < (StartSeqNumber - Pair->SequenceNumber + Length)) { // do we need to increase length of existing pair
          Pair->Length = Length + StartSeqNumber - Pair->SequenceNumber;
       }
@@ -21,8 +54,14 @@ int AdjustPair(ReceiveWindow *Window, uint16_t StartSeqNumber, uint16_t Length)
       struct SequenceLengthPair *NewPair = malloc(sizeof (struct SequenceLengthPair));
       NewPair->SequenceNumber = StartSeqNumber;
       NewPair->Length = Length;
-      NewPair->Next = Pair->Next;
-      Pair->Next = NewPair;
+      if(Pair) {
+         NewPair->Next = Pair->Next;
+         Pair->Next = NewPair;
+      }
+      else {
+         NewPair->Next = NULL;
+         Window->SeqPairs = NewPair;
+      }
       Pair = NewPair;  // set pair as newpair to do adjustment as down.
    }
    NextPair = Pair->Next;
@@ -35,30 +74,77 @@ int AdjustPair(ReceiveWindow *Window, uint16_t StartSeqNumber, uint16_t Length)
       NextPair = Pair->Next;
    }
 }
-
-int AddData(unsigned char *data, uint16_t Length, uint16_t SequenceNumber, ReceiveWindow *Window)
+int PushDataInQueue(int identifier)
 {
-   uint16_t CurrentPointer = (SequenceNumber - Window->StartSequenceNumber) % Window->MaxSize;
-   memcpy(Window->Data, data, Length);
+   char Buffer[2000];
+   int len = 0;
+   if(len = GetData(identifier, Buffer)) {
+      void *msg = NULL;
+      if (rte_mempool_get(buffer_message_pool, &msg) < 0) {
+         printf ("Failed to get message buffer\n");
+/// / put assert ;
+      }
+      memcpy(msg, Buffer, len);
+      if (rte_ring_enqueue(socket_tcb_ring_send, msg) < 0) {
+         printf("Failed to send message - message discarded\n");
+         rte_mempool_put(buffer_message_pool, msg);
+      }
+   }
 }
 
-int PushData(unsigned char *data, uint16_t SequenceNumber, uint16_t Length, struct tcb *ptcb)
+int AddData(unsigned char *data, uint16_t Length, uint32_t SequenceNumber, ReceiveWindow *Window, int identifier)
 {
+   if(Window->StartSequenceNumber == 0) {
+      Window->StartSequenceNumber = SequenceNumber;
+   }
+   uint16_t CurrentPointer = (SequenceNumber - Window->StartSequenceNumber) % Window->MaxSize;
+   memcpy(Window->Data + CurrentPointer, data, Length);
+   printf("pushing data from index %d to length %d\n", CurrentPointer, Length);
+   PushDataInQueue(identifier);
+}
+
+int GetData(int identifier, unsigned char *Buffer)
+{
+   struct tcb *ptcb = get_tcb_by_identifier(identifier);
+   if(ptcb == NULL) {
+      return -1;
+   }
    ReceiveWindow *Window = ptcb->RecvWindow;
-   if((SequenceNumber - Window->SeqPairs->SequenceNumber + Length) < Window->CurrentSize) { // sequence number out of receive window size 
+   struct SequenceLengthPair *Pair = Window->SeqPairs;
+   if(Pair) {
+      int index = (Pair->SequenceNumber - Window->StartSequenceNumber) % Window->MaxSize;
+      printf("copying data from index %d to length %d\n", index, Pair->Length);
+      memcpy(Buffer, Window->Data + index, Pair->Length);
+      Window->SeqPairs = Pair->Next;
+      free(Pair);
+      return Pair->Length;
+   }
+   return 0;
+}
+
+int PushData(unsigned char *data, uint32_t SequenceNumber, uint16_t Length, struct tcb *ptcb)
+{
+// future add assert if SequenceNumber is 0.
+   ReceiveWindow *Window = ptcb->RecvWindow;
+   if(Window->SeqPairs && (SequenceNumber - Window->SeqPairs->SequenceNumber + Length) < Window->CurrentSize) { // sequence number out of receive window size 
       return -1;
    }
    AdjustPair(Window, SequenceNumber, Length);
-   AddData(data, Length, SequenceNumber, Window);
+   AddData(data, Length, SequenceNumber, Window, ptcb->identifier);
    // unlock the sem if socket waiting for it.
 }
+int FreeWindow(ReceiveWindow *Window)
+{
+   free(Window->Data);
+   free(Window);
+}
 
-ReceiveWindow *AllocWindow(int MaxSize, int CurrentSize, uint16_t StartSequenceNumber)
+ReceiveWindow *AllocWindow(int MaxSize, int CurrentSize)
 {
    ReceiveWindow *Window = malloc(sizeof(ReceiveWindow));
    Window->MaxSize = MaxSize;
    Window->CurrentSize = CurrentSize;
-   Window->StartSequenceNumber = StartSequenceNumber;
+   Window->StartSequenceNumber = 0;
    Window->SeqPairs = NULL;
    Window->Data = malloc(MaxSize);
    return Window;

@@ -685,6 +685,7 @@ MAIN(int argc, char **argv)
    temp.IP[3] = 2;
    IfList[0] = &temp;
    InitLogger();
+   InitTcpTcb();
    //InitInterface(IfList, 1);
    AddInterface(IfList[0]);
 

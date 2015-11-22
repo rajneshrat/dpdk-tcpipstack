@@ -15,10 +15,19 @@
 pthread_mutex_t tcb_alloc_mutex;
 
 int Ntcb = 0;
-
-
 struct tcb *tcbs[TOTAL_TCBS];
-struct tcb* alloc_tcb()
+
+void InitTcpTcb()
+{
+   InitSocketTcbRing();
+   InitSocketInterface();
+   int i;
+   for(i=0;i<TOTAL_TCBS; i++) {
+      tcbs[i] = NULL;
+   }
+}
+
+struct tcb* alloc_tcb(uint16_t MaxWindSize, uint16_t CurrentWindSize)
 {
    int i = 0;
    pthread_mutex_lock(&tcb_alloc_mutex);
@@ -26,8 +35,13 @@ struct tcb* alloc_tcb()
    Ntcb++;
    assert(Ntcb < TOTAL_TCBS);
    struct tcb *ptcb = malloc(sizeof(struct tcb));
+   if(ptcb==NULL) {
+      assert(0);
+      printf("malloc failed\n");
+   }
    memset(ptcb, 0, sizeof(struct tcb));
    tcbs[i] = ptcb;
+   ptcb->RecvWindow = AllocWindow(MaxWindSize, CurrentWindSize);
    pthread_mutex_unlock(&tcb_alloc_mutex);
    return tcbs[i];
 }
@@ -40,7 +54,7 @@ struct tcb* get_tcb_by_identifier(int identifier)
       ptcb = tcbs[i];
       //logger(TCB, NORMAL,"Finding the tcb\n");
      // logger(TCB, NORMAL,"identifier is  = %d\n",ptcb->identifier); 
-      if(ptcb->identifier == identifier) {
+      if(ptcb && ptcb->identifier == identifier) {
          return ptcb;
       }
    }

@@ -31,5 +31,5 @@ struct tcb
    pthread_cond_t condAccept; // used for read also 
 };
 
-struct tcb* alloc_tcb();
+struct tcb* alloc_tcb(uint16_t, uint16_t);
 #endif
