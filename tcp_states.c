@@ -25,9 +25,6 @@ int
 tcp_established(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {
    printf("tcp established state\n");
-   if((ptcphdr->tcp_flags & SYN) || (ptcphdr->tcp_flags & FIN) ) {
-      ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;  // this should add tcp len also.
-   }
    if(ptcphdr->tcp_flags & FIN) {
       ptcb->state = TCP_FIN_2;
   //change state to tcpfin1 
@@ -46,7 +43,7 @@ tcp_established(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphd
       ptcb->read_buffer = (char *) malloc(datalen);
       ptcb->read_buffer_len = datalen;
       memcpy(ptcb->read_buffer, data_buffer, datalen); 
-      PushData(ptcb->read_buffer, ntohl(ptcphdr->sent_seq), datalen, ptcb);
+      PushData(ptcb->read_buffer, ptcphdr, datalen, ptcb);
       pthread_mutex_lock(&(ptcb->mutex));
       if(ptcb->WaitingOnRead) {
 printf("signaling accept mutex.\n");
@@ -55,6 +52,13 @@ printf("signaling accept mutex.\n");
       }
       pthread_mutex_unlock(&(ptcb->mutex));
     //  free(ptcb->read_buffer);
+   }
+   else {
+      if((ptcphdr->tcp_flags & SYN) || (ptcphdr->tcp_flags & FIN) ) {
+         printf("**********Increasing ack for syn or fin %u\n", ntohl(ptcphdr->sent_seq) + 1);
+         ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;  // this should add tcp len also.
+         sendack(ptcb);
+      }
    }
 // also increase ack for data. future work.
    return 0;

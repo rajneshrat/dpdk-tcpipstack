@@ -3,6 +3,7 @@
 #include "tcp_tcb.h"
 #include <rte_ring.h>
 #include <rte_mempool.h>
+#include "tcp.h"
 
 static struct rte_ring *socket_tcb_ring_send;
 
@@ -122,14 +123,31 @@ int GetData(int identifier, unsigned char *Buffer)
    return 0;
 }
 
-int PushData(unsigned char *data, uint32_t SequenceNumber, uint16_t Length, struct tcb *ptcb)
+int SendAck()
+{
+
+
+
+}
+
+int PushData(unsigned char *data, struct tcp_hdr* ptcphdr, uint16_t Length, struct tcb *ptcb)
 {
 // future add assert if SequenceNumber is 0.
+   uint32_t SequenceNumber = ntohl(ptcphdr->sent_seq);
    ReceiveWindow *Window = ptcb->RecvWindow;
    if(Window->SeqPairs && (SequenceNumber - Window->SeqPairs->SequenceNumber + Length) < Window->CurrentSize) { // sequence number out of receive window size 
+      printf("WARNING :: Out of window data, dropping all\n");
       return -1;
    }
+   ptcb->ack = SequenceNumber + Length;
+   if(ptcphdr->tcp_flags & FIN || ptcphdr->tcp_flags & SYN) {
+      ptcb->ack = ptcb->ack + 1;
+   }
+   printf("**** setting ack for %u\n", ptcb->ack); 
+   sendack(ptcb);
    AdjustPair(Window, SequenceNumber, Length);
+   struct SequenceLengthPair *Pair = Window->SeqPairs;
+   ptcb->ack = Pair->SequenceNumber + Pair->Length;
    AddData(data, Length, SequenceNumber, Window, ptcb->identifier);
    // unlock the sem if socket waiting for it.
 }

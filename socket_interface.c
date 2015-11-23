@@ -132,7 +132,7 @@ int socket_read_nonblock(int ser_id, unsigned char *buffer)
       usleep(5);
       continue;
    }
-   printf("Received '%s'\n",(char *)msg);
+   printf("Received %s and len %d\n",(char *)msg, strlen(msg));
    memcpy(buffer, msg, strlen(msg));
    rte_mempool_put(buffer_message_pool, msg);
  

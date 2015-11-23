@@ -5,7 +5,7 @@
 int new_socket = 0;
 void *DoWork(void *test)
 {
-   char buffer[11];
+   char buffer[1024];
    int len = 0;
    logger(SOCKET, NORMAL, "coming off accept\n");
    socket_send(new_socket, "Hello World", 12);
@@ -14,8 +14,9 @@ void *DoWork(void *test)
    socket_read(new_socket, buffer, 10);
    printf("received from socket %s\n", buffer);
 #endif
-   while(1) {
-      len = socket_read_nonblock(new_socket, buffer);
+   len = 0;
+   while(len < 22) {
+      len += socket_read_nonblock(new_socket, buffer);
       if(len < 0) {
          printf("socket closed\n");
          break;
@@ -24,11 +25,11 @@ void *DoWork(void *test)
          printf("nothing to show\n");
       }
       else {
-         printf("received from socket %s\n", buffer);
+         printf("received from socket %s length %d\n", buffer, len);
       }
-      usleep(10);
    }
-   printf("received from socket %s\n", buffer);
+   //printf("received from socket %s\n", buffer);
+   printf("closing socket\n");
    socket_close(new_socket);
    return NULL;
 }
