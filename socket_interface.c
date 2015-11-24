@@ -5,12 +5,28 @@
 #include "tcp_common.h"
 #include <pthread.h>
 #include <rte_mempool.h>
+enum Msg_Type {
+   SOCKET_CLOSE,
+   SEND_DATA,
+};
 
+typedef struct Socket_Send_Msg_ {
+   int m_Msg_Type;
+   int m_Identifier; // tcb identifier
+   int m_Len; // data len;
+   unsigned char m_Data[1400]; // data pointer
+}Socket_Send_Msg;
 
 static struct rte_ring *socket_tcb_ring_recv = NULL;
+static struct rte_ring *tcb_socket_ring_recv = NULL;
+static struct rte_ring *tcb_socket_ring_send = NULL;
+const unsigned int tcb_socket_ring_size = 1024;
 static const char *TCB_TO_SOCKET = "TCB_TO_SOCKET";
+static const char *SOCKET_TO_TCB = "SOCKET_TO_TCB";
 static const char *_MSG_POOL = "MSG_POOL";
 static struct rte_mempool *buffer_message_pool;
+
+
 void InitSocketInterface()
 {
    socket_tcb_ring_recv = rte_ring_lookup(TCB_TO_SOCKET);
@@ -27,7 +43,24 @@ void InitSocketInterface()
    else {
       printf("socket tcb recv side OK.\n");
    }
+   tcb_socket_ring_send = rte_ring_create(SOCKET_TO_TCB, tcb_socket_ring_size, SOCKET_ID_ANY, 0);
+   if(tcb_socket_ring_send == NULL) {
+      printf ("ERROR **** Failed to set scoket tcb ring send side.\n");
+      //ASSERT(0);
+   }
+   else {
+      printf("Socket tcb ring send side OK\n");
+   }
+   tcb_socket_ring_recv = rte_ring_lookup(SOCKET_TO_TCB);
+   if(tcb_socket_ring_recv == NULL) {
+      printf ("ERROR **** Failed to set scoket tcb ring send side.\n");
+      //assert(0);
+   }
+   else {
+      printf("Socket tcb ring send side OK\n");
+   }
 }
+
 
 int 
 socket_open(STREAM_TYPE stream)
@@ -87,15 +120,52 @@ socket_accept(int ser_id, struct sock_addr *client_addr)
    return new_ptcb->identifier; 
 }
 
+
 int
 socket_send(int ser_id, char *message, int len)
 {
-   struct tcb *ptcb = NULL;
-   struct rte_mbuf *mbuf = get_mbuf();
-   ptcb = get_tcb_by_identifier(ser_id);
-   sendtcpdata(ptcb, mbuf, message, len);
+   Socket_Send_Msg *Msg = NULL;
+   if (rte_mempool_get(buffer_message_pool, &Msg) < 0) {
+       printf ("Failed to get message buffer\n");
+/// / put assert ;
+   }
+   Msg->m_Identifier = ser_id;
+   Msg->m_Len = len;
+   Msg->m_Msg_Type = SEND_DATA;
+   memcpy(Msg->m_Data, message, len);
+   if (rte_ring_enqueue(tcb_socket_ring_send, Msg) < 0) {
+      printf("Failed to send message - message discarded\n");
+      rte_mempool_put(buffer_message_pool, Msg);
+   }
+   printf("****** Enqued for  %s and len %d and identifier %d\n",(char *)Msg->m_Data, Msg->m_Len, Msg->m_Identifier);
   // sendtcppacket(ptcb, mbuf, message, len);
   // ptcb->send_data(message, len); 
+}
+
+int
+check_socket_out_queue()
+{
+   Socket_Send_Msg *msg;
+   unsigned char message[1500];
+   struct tcb *ptcb = NULL;
+   int num = rte_ring_dequeue(tcb_socket_ring_recv, &msg);
+   if(num < 0) {
+      return num;
+   }
+   if(msg->m_Msg_Type == SOCKET_CLOSE) {
+      ptcb = get_tcb_by_identifier(msg->m_Identifier);
+      sendfin(ptcb);
+   }
+   if(msg->m_Msg_Type == SEND_DATA) {
+      printf("****** Received %s and len %d and identifier %d\n",(char *)msg->m_Data, msg->m_Len, msg->m_Identifier);
+      memcpy(message, msg->m_Data, msg->m_Len);
+  
+      struct rte_mbuf *mbuf = get_mbuf();
+      ptcb = get_tcb_by_identifier(msg->m_Identifier);
+      sendtcpdata(ptcb, mbuf, message, msg->m_Len);
+   }
+   rte_mempool_put(buffer_message_pool, msg);
+   return 0;
 }
 
 int
@@ -143,6 +213,17 @@ int
 socket_close(int identifier)
 {
    printf("closing tcb\n");
+   Socket_Send_Msg *Msg = NULL;
+   if (rte_mempool_get(buffer_message_pool, &Msg) < 0) {
+       printf ("Failed to get message buffer\n");
+/// / put assert ;
+   }
+   Msg->m_Identifier = identifier;
+   Msg->m_Msg_Type = SOCKET_CLOSE;
+   if (rte_ring_enqueue(tcb_socket_ring_send, Msg) < 0) {
+      printf("Failed to send message - message discarded\n");
+      rte_mempool_put(buffer_message_pool, Msg);
+   }
  //  remove_tcb(identifier);
    return 0;
 }

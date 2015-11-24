@@ -2,9 +2,9 @@
 #include <pthread.h>
 #include "logger.h"
 
-int new_socket = 0;
 void *DoWork(void *test)
 {
+   int new_socket = *((int *) test);
    char buffer[1024];
    int len = 0;
    logger(SOCKET, NORMAL, "coming off accept\n");
@@ -31,6 +31,7 @@ void *DoWork(void *test)
    //printf("received from socket %s\n", buffer);
    printf("closing socket\n");
    socket_close(new_socket);
+   free(test);
    return NULL;
 }
 
@@ -53,8 +54,9 @@ void init_socket_example(int port, uint8_t *ip)
    pthread_attr_t attr;
    int thread_id = 0;
    while(1) {
-      new_socket = socket_accept(socket, &client);
-      pthread_create(&thread_id, NULL, DoWork, NULL); 
+      int *socket_child = malloc(sizeof(int));
+      *socket_child = socket_accept(socket, &client);
+      pthread_create(&thread_id, NULL, DoWork, socket_child); 
    }
 //   printf("accepted the connection\n");
 }

@@ -290,6 +290,7 @@ l2fwd_main_loop(void)
 	            //rte_eth_tx_burst(portid, 0, &pkts_burst[i], 1);
 	         }
          }
+         check_socket_out_queue();
    }
 
 }

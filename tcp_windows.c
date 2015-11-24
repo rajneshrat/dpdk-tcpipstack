@@ -75,7 +75,7 @@ int AdjustPair(ReceiveWindow *Window, uint32_t StartSeqNumber, uint16_t Length)
       NextPair = Pair->Next;
    }
 }
-int PushDataInQueue(int identifier)
+static int PushDataInQueue(int identifier)
 {
    char Buffer[2000];
    int len = 0;
