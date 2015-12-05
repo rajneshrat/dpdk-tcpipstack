@@ -5,9 +5,9 @@
 #include <rte_mempool.h>
 #include "tcp.h"
 
-static struct rte_ring *socket_tcb_ring_send;
+//static struct rte_ring *socket_tcb_ring_send;
 
-static const char *TCB_TO_SOCKET = "TCB_TO_SOCKET";
+//static const char *TCB_TO_SOCKET = "TCB_TO_SOCKET";
 static const char *_MSG_POOL = "MSG_POOL";
 const unsigned int pool_size = 1024;
 const unsigned int socket_tcb_ring_size = 1024;
@@ -16,17 +16,11 @@ static struct rte_mempool *buffer_message_pool;
 
 void InitSocketTcbRing()
 {
-   socket_tcb_ring_send = rte_ring_create(TCB_TO_SOCKET, socket_tcb_ring_size, SOCKET_ID_ANY, 0);
+ //  socket_tcb_ring_send = rte_ring_create(TCB_TO_SOCKET, socket_tcb_ring_size, SOCKET_ID_ANY, 0);
    buffer_message_pool = rte_mempool_create(_MSG_POOL, pool_size,
             buffer_size, 32, 0,
             NULL, NULL, NULL, NULL,
             SOCKET_ID_ANY, 0);
-   if(socket_tcb_ring_send == NULL) {
-      printf ("ERROR **** Failed to set scoket tcb ring send side.\n");
-   }
-   else {
-      printf("Socket tcb ring send side OK\n");
-   }
    if(buffer_message_pool == NULL) {
       printf("ERROR **** socket tcb Message pool send side failed\n");
    }
@@ -79,6 +73,7 @@ static int PushDataInQueue(int identifier)
 {
    char Buffer[2000];
    int len = 0;
+   struct tcb *ptcb = get_tcb_by_identifier(identifier);
    if(len = GetData(identifier, Buffer)) {
       void *msg = NULL;
       if (rte_mempool_get(buffer_message_pool, &msg) < 0) {
@@ -86,7 +81,7 @@ static int PushDataInQueue(int identifier)
 /// / put assert ;
       }
       memcpy(msg, Buffer, len);
-      if (rte_ring_enqueue(socket_tcb_ring_send, msg) < 0) {
+      if (rte_ring_enqueue(ptcb->socket_tcb_ring_send, msg) < 0) {
          printf("Failed to send message - message discarded\n");
          rte_mempool_put(buffer_message_pool, msg);
       }

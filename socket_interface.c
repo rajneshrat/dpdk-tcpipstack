@@ -17,7 +17,7 @@ typedef struct Socket_Send_Msg_ {
    unsigned char m_Data[1400]; // data pointer
 }Socket_Send_Msg;
 
-static struct rte_ring *socket_tcb_ring_recv = NULL;
+//static struct rte_ring *socket_tcb_ring_recv = NULL;
 static struct rte_ring *tcb_socket_ring_recv = NULL;
 static struct rte_ring *tcb_socket_ring_send = NULL;
 const unsigned int tcb_socket_ring_size = 1024;
@@ -29,14 +29,8 @@ static struct rte_mempool *buffer_message_pool;
 
 void InitSocketInterface()
 {
-   socket_tcb_ring_recv = rte_ring_lookup(TCB_TO_SOCKET);
+//   socket_tcb_ring_recv = rte_ring_lookup(TCB_TO_SOCKET);
    buffer_message_pool = rte_mempool_lookup(_MSG_POOL);
-   if(socket_tcb_ring_recv == NULL) {
-      printf ("ERROR **** Failed to set scoket tcb ring.\n");
-   }
-   else {
-      printf("Socket tcb ring recv side OK\n");
-   }
    if(buffer_message_pool == NULL) {
       printf("ERROR **** socket tcb Message pool failed\n");
    }
@@ -198,7 +192,8 @@ socket_read(int ser_id, char *buffer, int len)
 int socket_read_nonblock(int ser_id, unsigned char *buffer)
 {
    void *msg;
-   while (rte_ring_dequeue(socket_tcb_ring_recv, &msg) < 0){
+   struct tcb *ptcb = get_tcb_by_identifier(ser_id);
+   while (rte_ring_dequeue(ptcb->socket_tcb_ring_recv, &msg) < 0){
       usleep(5);
       continue;
    }

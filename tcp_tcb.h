@@ -28,6 +28,10 @@ struct tcb
    ReceiveWindow *RecvWindow;
    TCP_STATE state;
    pthread_mutex_t mutex;
+   int m_IsSocketTcbRingIntialized;
+   struct rte_ring *socket_tcb_ring_send;
+   struct rte_ring *socket_tcb_ring_recv;
+   char TCB_TO_SOCKET_RING_NAME[100];
    pthread_cond_t condAccept; // used for read also 
 };
 

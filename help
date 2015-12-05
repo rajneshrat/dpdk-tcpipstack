@@ -15,8 +15,9 @@ rm -rf /mnt/huge
 
 mkdir -p /mnt/huge
 mount -t hugetlbfs nodev /mnt/huge
-echo 64 > /sys/kernel/mm/hugepages/hugepages-4096kB/nr_hugepages
+echo 128 > /sys/kernel/mm/hugepages/hugepages-4096kB/nr_hugepages
 
 # without huge page l2fwd will not work.
 
 ./build/tcp_stack -c 0xf -n 4 -- -p 0x3
+#./build/tcp_stack -c 0xf -n 4 -- -p 0x1

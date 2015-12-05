@@ -13,6 +13,7 @@
 
 #define TOTAL_TCBS 10
 pthread_mutex_t tcb_alloc_mutex;
+extern const unsigned int socket_tcb_ring_size ;
 
 int Ntcb = 0;
 struct tcb *tcbs[TOTAL_TCBS];
@@ -41,6 +42,22 @@ struct tcb* alloc_tcb(uint16_t MaxWindSize, uint16_t CurrentWindSize)
    }
    memset(ptcb, 0, sizeof(struct tcb));
    tcbs[i] = ptcb;
+   sprintf(ptcb->TCB_TO_SOCKET_RING_NAME,"%d", ptcb->identifier);
+// assert if size crosses of buffer ring name.
+   ptcb->socket_tcb_ring_send = rte_ring_create(ptcb->TCB_TO_SOCKET_RING_NAME, socket_tcb_ring_size, SOCKET_ID_ANY, 0);
+   ptcb->socket_tcb_ring_recv = rte_ring_lookup(ptcb->TCB_TO_SOCKET_RING_NAME);
+   if(ptcb->socket_tcb_ring_recv == NULL) {
+      printf ("ERROR **** Failed to set scoket tcb ring.\n");
+   }
+   else {
+      printf("Socket tcb ring recv side OK\n");
+   }
+   if(ptcb->socket_tcb_ring_send == NULL) {
+      printf ("ERROR **** Failed to set scoket tcb ring send side.\n");
+   }
+   else {
+      printf("Socket tcb ring send side OK\n");
+   }
    ptcb->RecvWindow = AllocWindow(MaxWindSize, CurrentWindSize);
    pthread_mutex_unlock(&tcb_alloc_mutex);
    return tcbs[i];
