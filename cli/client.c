@@ -35,7 +35,8 @@ int main(int argc , char *argv[])
     while(1)
     {
         ShowCommandPrompt();
-        scanf("%s" , message);
+        gets(message);
+       // scanf("%s" , message);
          
         if( send(sock , message , strlen(message) , 0) < 0)
         {
