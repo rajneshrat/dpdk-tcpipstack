@@ -47,6 +47,13 @@ socket_open(STREAM_TYPE stream)
 }
 
 int
+sock_bridge_bind(struct sock_bridge_addr *addr)
+{
+
+
+}
+
+int
 socket_bind(int identifier, struct sock_addr *serv_addr)
 {
    struct tcb *ptcb;

@@ -6,7 +6,7 @@
 #include <pthread.h>
 #include "logger.h"
 
-void *DoWork(void *test)
+void *DoWork2(void *test)
 {
    int new_socket = *((int *) test);
    char buffer[1024];
@@ -39,20 +39,27 @@ void *DoWork(void *test)
    free(test);
    return NULL;
 }
+void TcpDataA (struct Sock_Bridge_Msg *Msg)
+{
 
-void init_socket_example(int port, uint8_t *ip)
+}
+
+void TcpDataB (struct Sock_Bridge_Msg *Msg)
+{
+
+}
+
+void init_socket_bridge_example(int port, uint8_t *ip)
 {
    int i = 0;
-   int socket = socket_open(TCP_STREAM);
-   struct sock_addr addr;
-   addr.port = port;
-   addr.ip = 0;
-   for(i=0; i<4; i++) {
-      addr.ip |= ip[i] << i*8;
-   }
+   int socket = socket_open(TCP_BRIDGE);
+   struct sock_bridge_addr bridge_addr;
+   bridge_addr.m_PortA = 0;
+   bridge_addr.m_PortB = 1;
+   bridge_addr.m_FuncA = TcpDataA;
+   bridge_addr.m_FuncB = TcpDataB;
 //   printf("ip is %x\n", addr.ip);
-   socket_bind(socket, &addr);
-   socket_listen(socket, 5);
+   sock_bridge_bind(bridge_addr);
    struct sock_addr client;
 //   printf("Waiting for accept\n");
    logger(SOCKET, NORMAL, "waiting on accept\n");
@@ -61,9 +68,8 @@ void init_socket_example(int port, uint8_t *ip)
    while(1) {
       int *socket_child = malloc(sizeof(int));
       *socket_child = socket_accept(socket, &client);
-      pthread_create(&thread_id, NULL, DoWork, socket_child); 
+      pthread_create(&thread_id, NULL, DoWork2, socket_child); 
    }
 //   printf("accepted the connection\n");
 }
-
 
