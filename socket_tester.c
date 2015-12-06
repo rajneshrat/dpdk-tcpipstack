@@ -8,6 +8,7 @@ void *DoWork(void *test)
    char buffer[1024];
    int len = 0;
    logger(SOCKET, NORMAL, "coming off accept\n");
+   printf("Sending dat at socket %d\n", new_socket);
    socket_send(new_socket, "Hello World", 12);
    printf("waiting on socket read\n");
 #if 0

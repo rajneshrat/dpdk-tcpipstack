@@ -74,8 +74,7 @@ tcp_listen(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, st
       return 0;
    }
    printf("Tcp listen state\n");
-   memcpy(new_ptcb, ptcb, sizeof(struct tcb));
-   new_ptcb->identifier = 10;
+//   new_ptcb->identifier = 10;  identifier will be given by alloc.
    new_ptcb->state = SYN_RECV;
    new_ptcb->dport = ptcb->dport;
    new_ptcb->sport = htons(ptcphdr->src_port);

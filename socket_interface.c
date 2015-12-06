@@ -18,9 +18,6 @@ typedef struct Socket_Send_Msg_ {
 }Socket_Send_Msg;
 
 //static struct rte_ring *socket_tcb_ring_recv = NULL;
-static struct rte_ring *tcb_socket_ring_recv = NULL;
-static struct rte_ring *tcb_socket_ring_send = NULL;
-const unsigned int tcb_socket_ring_size = 1024;
 static const char *TCB_TO_SOCKET = "TCB_TO_SOCKET";
 static const char *SOCKET_TO_TCB = "SOCKET_TO_TCB";
 static const char *_MSG_POOL = "MSG_POOL";
@@ -36,22 +33,6 @@ void InitSocketInterface()
    }
    else {
       printf("socket tcb recv side OK.\n");
-   }
-   tcb_socket_ring_send = rte_ring_create(SOCKET_TO_TCB, tcb_socket_ring_size, SOCKET_ID_ANY, 0);
-   if(tcb_socket_ring_send == NULL) {
-      printf ("ERROR **** Failed to set scoket tcb ring send side.\n");
-      //ASSERT(0);
-   }
-   else {
-      printf("Socket tcb ring send side OK\n");
-   }
-   tcb_socket_ring_recv = rte_ring_lookup(SOCKET_TO_TCB);
-   if(tcb_socket_ring_recv == NULL) {
-      printf ("ERROR **** Failed to set scoket tcb ring send side.\n");
-      //assert(0);
-   }
-   else {
-      printf("Socket tcb ring send side OK\n");
    }
 }
 
@@ -119,6 +100,7 @@ int
 socket_send(int ser_id, char *message, int len)
 {
    Socket_Send_Msg *Msg = NULL;
+   struct tcb *ptcb = get_tcb_by_identifier(ser_id);
    if (rte_mempool_get(buffer_message_pool, &Msg) < 0) {
        printf ("Failed to get message buffer\n");
 /// / put assert ;
@@ -127,7 +109,7 @@ socket_send(int ser_id, char *message, int len)
    Msg->m_Len = len;
    Msg->m_Msg_Type = SEND_DATA;
    memcpy(Msg->m_Data, message, len);
-   if (rte_ring_enqueue(tcb_socket_ring_send, Msg) < 0) {
+   if (rte_ring_enqueue(ptcb->tcb_socket_ring_send, Msg) < 0) {
       printf("Failed to send message - message discarded\n");
       rte_mempool_put(buffer_message_pool, Msg);
    }
@@ -136,29 +118,56 @@ socket_send(int ser_id, char *message, int len)
   // ptcb->send_data(message, len); 
 }
 
+extern struct tcb *tcbs[];
+extern int Ntcb;
+extern pthread_mutex_t tcb_alloc_mutex;
 int
 check_socket_out_queue()
 {
    Socket_Send_Msg *msg;
+   int i;
    unsigned char message[1500];
    struct tcb *ptcb = NULL;
-   int num = rte_ring_dequeue(tcb_socket_ring_recv, &msg);
-   if(num < 0) {
-      return num;
+   struct tcb *temp = NULL;
+   pthread_mutex_lock(&tcb_alloc_mutex);
+   uint32_t TotalTcbs = Ntcb;
+   pthread_mutex_unlock(&tcb_alloc_mutex);
+    
+   for(i=0; i<TotalTcbs; i++) {  // change it to hash type later
+   //   if( i != 0)
+      //printf("Checking tcb %d for sendingi %d %d\n", i, Ntcb, TotalTcbs);
+      ptcb = tcbs[i];
+      if(ptcb == NULL) {
+         continue;
+      }
+      int num = rte_ring_dequeue(ptcb->tcb_socket_ring_recv, &msg);
+      if(num < 0) {
+         continue;
+      }
+      if(msg->m_Msg_Type == SOCKET_CLOSE) {
+         temp = get_tcb_by_identifier(msg->m_Identifier);
+         if(temp != ptcb) {
+            printf ("Everything screewed at tcb'\n");
+            exit(0);
+      // put assert
+         }
+         sendfin(ptcb);
+      }
+      if(msg->m_Msg_Type == SEND_DATA) {
+         printf("****** Received %s and len %d and identifier %d\n",(char *)msg->m_Data, msg->m_Len, msg->m_Identifier);
+         memcpy(message, msg->m_Data, msg->m_Len);
+     
+         struct rte_mbuf *mbuf = get_mbuf();
+         temp = get_tcb_by_identifier(msg->m_Identifier);
+         if(temp != ptcb) {
+            printf ("Everything screewed at tcb'\n");
+            exit(0);
+      // put assert
+         }
+         sendtcpdata(ptcb, mbuf, message, msg->m_Len);
+      }
+      rte_mempool_put(buffer_message_pool, msg);
    }
-   if(msg->m_Msg_Type == SOCKET_CLOSE) {
-      ptcb = get_tcb_by_identifier(msg->m_Identifier);
-      sendfin(ptcb);
-   }
-   if(msg->m_Msg_Type == SEND_DATA) {
-      printf("****** Received %s and len %d and identifier %d\n",(char *)msg->m_Data, msg->m_Len, msg->m_Identifier);
-      memcpy(message, msg->m_Data, msg->m_Len);
-  
-      struct rte_mbuf *mbuf = get_mbuf();
-      ptcb = get_tcb_by_identifier(msg->m_Identifier);
-      sendtcpdata(ptcb, mbuf, message, msg->m_Len);
-   }
-   rte_mempool_put(buffer_message_pool, msg);
    return 0;
 }
 
@@ -209,13 +218,14 @@ socket_close(int identifier)
 {
    printf("closing tcb\n");
    Socket_Send_Msg *Msg = NULL;
+   struct tcb *ptcb = get_tcb_by_identifier(identifier);
    if (rte_mempool_get(buffer_message_pool, &Msg) < 0) {
        printf ("Failed to get message buffer\n");
 /// / put assert ;
    }
    Msg->m_Identifier = identifier;
    Msg->m_Msg_Type = SOCKET_CLOSE;
-   if (rte_ring_enqueue(tcb_socket_ring_send, Msg) < 0) {
+   if (rte_ring_enqueue(ptcb->tcb_socket_ring_send, Msg) < 0) {
       printf("Failed to send message - message discarded\n");
       rte_mempool_put(buffer_message_pool, Msg);
    }

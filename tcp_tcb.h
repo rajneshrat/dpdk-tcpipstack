@@ -11,7 +11,7 @@ extern int Ntcb;
 // make mac address also part of it.
 struct tcb
 {
-   int identifier;
+   uint16_t identifier;
    int dport;
    int sport;
    uint32_t ack;
@@ -31,7 +31,10 @@ struct tcb
    int m_IsSocketTcbRingIntialized;
    struct rte_ring *socket_tcb_ring_send;
    struct rte_ring *socket_tcb_ring_recv;
+   struct rte_ring *tcb_socket_ring_recv;
+   struct rte_ring *tcb_socket_ring_send;
    char TCB_TO_SOCKET_RING_NAME[100];
+   char SOCKET_TO_TCB_RING_NAME[100];
    pthread_cond_t condAccept; // used for read also 
 };
 

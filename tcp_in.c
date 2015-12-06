@@ -57,7 +57,7 @@ void send_reset(struct ipv4_hdr *ip_hdr, struct tcp_hdr *t_hdr)
        //printf("ip header is null\n");
    //    fflush(stdout);
    struct tcb ptcb;
-   ptcb.identifier = 0;
+   ptcb.identifier = 0; // dummy 
    
    ptcb.ipv4_dst = ip_hdr->dst_addr;  // fix it future , why we have htonl only for src
    ptcb.ipv4_src = htonl(ip_hdr->src_addr);
