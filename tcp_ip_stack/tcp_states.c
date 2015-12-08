@@ -10,6 +10,32 @@
 
 
 int
+tcp_syn_sent(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
+{
+  // //printf("tcp_closed called\n");
+// release semphone waiting at connect.
+   ptcb->state = TCP_ESTABLISHED;
+//   ptcb->dport = ptcb->dport;
+   ptcb->dport = htons(ptcphdr->dst_port);
+//   ptcb->ipv4_dst = ptcb->ipv4_dst;
+   ptcb->ipv4_dst = ntohl(iphdr->dst_addr);
+//   ptcb->sport = ntohs(ptcphdr->src_port);
+   ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;
+   ptcb->next_seq = 1;
+   // set src port;
+   // set ips.
+   pthread_mutex_lock(&(ptcb->mutex));
+   printf("signaling connect mutex.\n");
+   pthread_cond_signal(&(ptcb->condAccept));
+   pthread_mutex_unlock(&(ptcb->mutex));
+   //printf("sending ack\n");
+   //sendack(new_ptcb);
+   sendack(ptcb);
+   //sendsynack(ptcb);
+   return 0;
+
+}
+int
 tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {
    printf("tcp syn recv state\n");
@@ -134,7 +160,7 @@ tcp_fin1(struct tcb *ptcb, struct tcp_hdr* tcphdr, struct ipv4_hdr *iphdr, struc
 tcpinstate *tcpswitch[TCP_STATES] = { // the order of function must match with tcp states order. future work add assert if they differ 
    tcp_closed,
    tcp_listen,
-//   tcp_syn_sent,
+   tcp_syn_sent,
    tcp_syn_rcv,
    tcp_established,
    tcp_fin1,

@@ -40,7 +40,7 @@ void *DoWork(void *test)
    return NULL;
 }
 
-void init_socket_example(int port, uint8_t *ip)
+void init_socket_example_connect(int port, uint8_t *ip)
 {
    int i = 0;
    int socket = socket_open(TCP_STREAM);
@@ -51,6 +51,10 @@ void init_socket_example(int port, uint8_t *ip)
       addr.ip |= ip[i] << i*8;
    }
 //   printf("ip is %x\n", addr.ip);
+printf("connecting call\n");
+   socket_connect(socket, &addr);
+printf("connected.\n");
+#if 0
    socket_bind(socket, &addr);
    socket_listen(socket, 5);
    struct sock_addr client;
@@ -63,6 +67,34 @@ void init_socket_example(int port, uint8_t *ip)
       *socket_child = socket_accept(socket, &client);
       pthread_create(&thread_id, NULL, DoWork, socket_child); 
    }
+#endif
+//   printf("accepted the connection\n");
+}
+void init_socket_example(int port, uint8_t *ip)
+{
+   int i = 0;
+   int socket = socket_open(TCP_STREAM);
+   struct sock_addr addr;
+   addr.port = port;
+   addr.ip = 0;
+   for(i=0; i<4; i++) {
+      addr.ip |= ip[i] << i*8;
+   }
+//   printf("ip is %x\n", addr.ip);
+#if 1
+   socket_bind(socket, &addr);
+   socket_listen(socket, 5);
+   struct sock_addr client;
+//   printf("Waiting for accept\n");
+   logger(SOCKET, NORMAL, "waiting on accept\n");
+   pthread_attr_t attr;
+   int thread_id = 0;
+   while(1) {
+      int *socket_child = malloc(sizeof(int));
+      *socket_child = socket_accept(socket, &client);
+      pthread_create(&thread_id, NULL, DoWork, socket_child); 
+   }
+#endif
 //   printf("accepted the connection\n");
 }
 

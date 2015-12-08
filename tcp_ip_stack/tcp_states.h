@@ -13,6 +13,7 @@ int tcp_established(struct tcb *ptcb, struct tcp_hdr* mbuf, struct ipv4_hdr *);
 enum TCP_STATE_{
    TCP_STATE_CLOSED,
    LISTENING,
+   SYN_SENT,
    SYN_RECV,
    TCP_ESTABLISHED,
    TCP_STATE_FIN_1,

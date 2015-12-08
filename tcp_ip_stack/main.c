@@ -244,8 +244,14 @@ l2fwd_main_loop(void)
       ip[0] = 192;
       ip[1] = 168;
       ip[2] = 78;
-      ip[3] = 2;
-      init_socket_example(23, ip); // this call is blocking call. 
+      if(1) { // test accept otherwise test connect
+         ip[3] = 2;
+         init_socket_example(23, ip); // this call is blocking call. 
+      }
+      else {
+         ip[3] = 3;
+         init_socket_example_connect(23, ip); // this call is blocking call. 
+      }
       //init_socket_example(24, ip); // this call is blocking call. 
 	//	return;
 	}
@@ -290,6 +296,7 @@ l2fwd_main_loop(void)
 	            //rte_eth_tx_burst(portid, 0, &pkts_burst[i], 1);
 	         }
          }
+         CheckEtherOutRing();
          check_socket_out_queue();
    }
 
@@ -686,6 +693,7 @@ MAIN(int argc, char **argv)
    temp.IP[3] = 2;
    IfList[0] = &temp;
    InitLogger();
+   InitEtherInterface();
    InitTcpTcb();
    //InitInterface(IfList, 1);
    AddInterface(IfList[0]);

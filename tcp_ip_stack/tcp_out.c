@@ -163,6 +163,36 @@ void sendtcpack(struct tcb *ptcb, struct rte_mbuf *mbuf, char *data, int len)
    ip_out(ptcb, mbuf, ptcphdr, data_len); 
 
 }
+
+void sendsyn(struct tcb *ptcb)
+{
+   struct rte_mbuf *mbuf = get_mbuf();
+   uint8_t tcp_len = 20 ;
+   tcp_len = (tcp_len + 3) / 4;  // len is in multiple of 4 bytes;  20  will be 5
+   tcp_len = tcp_len << 4; // len has upper 4 bits position in tcp header.
+   logger(TCP, NORMAL, "sending tcp packet\n");
+   struct tcp_hdr *ptcphdr = (struct tcp_hdr *)rte_pktmbuf_prepend (mbuf, sizeof(struct tcp_hdr));
+  // printf("head room2 = %d\n", rte_pktmbuf_headroom(mbuf));
+   if(ptcphdr == NULL) {
+    //  printf("tcp header is null\n");
+   }
+   ptcphdr->src_port = htons(ptcb->dport);
+   ptcphdr->dst_port = htons(ptcb->sport);
+   ptcphdr->sent_seq = htonl(ptcb->next_seq);
+   ptcb->next_seq ++; // for fin
+   ptcphdr->recv_ack = htonl(ptcb->ack);
+   ptcphdr->data_off = tcp_len;
+   ptcphdr->tcp_flags =  SYN;
+   ptcphdr->rx_win = 12000;
+//   ptcphdr->cksum = 0x0001;
+   ptcphdr->tcp_urp = 0; 
+   //mbuf->ol_flags |=  PKT_TX_IP_CKSUM; // someday will calclate checkum here only.
+   
+ //  printf(" null\n");
+  // fflush(stdout);
+   ip_out(ptcb, mbuf, ptcphdr, 0); 
+}
+
 void sendfin(struct tcb *ptcb)
 {
    struct rte_mbuf *mbuf = get_mbuf();

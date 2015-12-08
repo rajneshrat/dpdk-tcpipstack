@@ -8,6 +8,7 @@
 enum Msg_Type {
    SOCKET_CLOSE,
    SEND_DATA,
+   CONNECTION_OPEN
 };
 
 typedef struct Socket_Send_Msg_ {
@@ -63,6 +64,7 @@ socket_bind(int identifier, struct sock_addr *serv_addr)
    if(ptcb == NULL) {
       return -1; // use enum here
    }
+// add lock here. this will avoid race from other thread for ptcb.
    ptcb->ipv4_dst = serv_addr->ip;
    ptcb->dport = serv_addr->port;
    ptcb->sport = 0;
@@ -91,8 +93,8 @@ socket_accept(int ser_id, struct sock_addr *client_addr)
       return 0;
       // don't allow multiple accepts hold on same socket.
    }
-   ptcb->state = LISTENING;
    pthread_mutex_lock(&(ptcb->mutex));
+   ptcb->state = LISTENING;
    ptcb->WaitingOnAccept = 1;
    pthread_cond_wait(&(ptcb->condAccept), &(ptcb->mutex));
    new_ptcb = ptcb->newpTcbOnAccept;
@@ -160,6 +162,16 @@ check_socket_out_queue()
          }
          sendfin(ptcb);
       }
+      if(msg->m_Msg_Type == CONNECTION_OPEN) {
+         temp = get_tcb_by_identifier(msg->m_Identifier);
+         if(temp != ptcb) {
+            printf ("Everything screewed at tcb'\n");
+            exit(0);
+      // put assert
+         }
+         sendsyn(ptcb);
+         ptcb->state = SYN_SENT; 
+      }
       if(msg->m_Msg_Type == SEND_DATA) {
          printf("****** Received %s and len %d and identifier %d\n",(char *)msg->m_Data, msg->m_Len, msg->m_Identifier);
          memcpy(message, msg->m_Data, msg->m_Len);
@@ -203,6 +215,52 @@ socket_read(int ser_id, char *buffer, int len)
    pthread_mutex_unlock(&(ptcb->mutex));
    
    return 10; 
+}
+
+int socket_connect(int identifier, struct sock_addr *client_addr)
+{
+/* using static ip for current. furute get ip from conf*/
+   int i;
+      uint8_t ip[4];
+      ip[0] = 192;
+      ip[1] = 168;
+      ip[2] = 78;
+      ip[3] = 2;
+   uint32_t DestIp = 0;
+   static uint16_t SrcPorts = 0;
+   if(SrcPorts == 0) {
+      SrcPorts = 10000;
+   }
+   SrcPorts ++;
+   for(i=0; i<4; i++) {
+      DestIp |= ip[i] << i*8;
+   }
+   printf("opening connection connect call\n");
+   Socket_Send_Msg *Msg = NULL;
+   struct tcb *ptcb = get_tcb_by_identifier(identifier);
+   if (rte_mempool_get(buffer_message_pool, &Msg) < 0) {
+       printf ("Failed to get message buffer\n");
+/// / put assert ;
+   }
+   Msg->m_Identifier = identifier;
+   Msg->m_Msg_Type = CONNECTION_OPEN;
+   if (rte_ring_enqueue(ptcb->tcb_socket_ring_send, Msg) < 0) {
+      printf("Failed to send message - message discarded\n");
+      rte_mempool_put(buffer_message_pool, Msg);
+   }
+   ptcb->ipv4_src = htonl(client_addr->ip); 
+   ptcb->sport = client_addr->port; 
+   ptcb->ipv4_dst = DestIp; 
+   ptcb->dport = SrcPorts; 
+   ptcb->next_seq = 1;
+   pthread_mutex_lock(&(ptcb->mutex));
+   ptcb->WaitingOnConnect = 1;
+   pthread_cond_wait(&(ptcb->condAccept), &(ptcb->mutex));
+   ptcb->WaitingOnConnect = 0;
+   pthread_mutex_unlock(&(ptcb->mutex));
+// wait on sema event of syn-ack.
+ //  remove_tcb(identifier);
+   return 0;
 }
 
 int socket_read_nonblock(int ser_id, unsigned char *buffer)

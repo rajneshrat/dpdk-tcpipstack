@@ -17,6 +17,7 @@ struct tcb
    uint32_t ack;
    uint32_t next_seq;
    int WaitingOnAccept;
+   int WaitingOnConnect;
    int WaitingOnRead;
    char *read_buffer;
    int read_buffer_len;

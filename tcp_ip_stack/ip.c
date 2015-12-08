@@ -89,6 +89,8 @@ ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf, struct tcp_hdr *ptcphdr, uint8_t
     memcpy(temp + sizeof(struct pseudo_tcp_hdr), ptcphdr, tcp_len + data_len);
     ptcphdr->cksum = htons(calculate_checksum(temp, sizeof(struct pseudo_tcp_hdr) + tcp_len + data_len));
 //    ptcphdr->cksum = get_ipv4_psd_sum(hdr); 
-    get_mac(ptcb->ipv4_src, dest_mac);
-    ether_out(dest_mac, NULL, ETHER_TYPE_IPv4, mbuf);
+    EnqueueMBuf(mbuf);
+  //  struct rte_mbuf **pbuf;
+//    *pbuf = mbuf;
+    //ether_out(dest_mac, NULL, ETHER_TYPE_IPv4, mbuf);
 }

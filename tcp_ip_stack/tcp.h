@@ -51,4 +51,8 @@ struct tcp_timestamp_option {
    uint32_t echo;
 } __attribute__((__packed__));
 
+void sendack(struct tcb *ptcb);
+
+void sendsyn(struct tcb *ptcb);
+
 #endif

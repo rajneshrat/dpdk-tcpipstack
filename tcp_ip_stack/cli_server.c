@@ -155,7 +155,7 @@ int cli_server_init()
     {
         printf("Could not create socket");
     }
-    puts("Socket created");
+    puts("cli server created");
      
     int yes = 1;
     if ( setsockopt(socket_desc, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1 )
@@ -173,7 +173,7 @@ int cli_server_init()
         perror("bind failed. Error");
         return 1;
     }
-    puts("bind done");
+    puts("cli bind done");
      
     //Listen
     listen(socket_desc , 3);
