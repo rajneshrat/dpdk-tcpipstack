@@ -10,6 +10,8 @@ Furture work is to move them away and create a library which will be statically 
 compilation and testing -
    download the current parent folder and move it to sample examples of dpdk and run the file help (./help)
 
+configuring the IP.
+   IP to be configured is stored inside config.h file. This file is inside tcp_stack folder.
 
 
 dpdk-tcpipstack

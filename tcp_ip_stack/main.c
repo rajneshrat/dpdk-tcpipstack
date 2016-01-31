@@ -243,15 +243,31 @@ l2fwd_main_loop(void)
       printf("using core 1 for server socket listner\n");
 		RTE_LOG(INFO, L2FWD, "lcore %u has nothing to do\n", lcore_id);
       uint8_t ip[4];
-      ip[0] = 192;
-      ip[1] = 168;
-      ip[2] = 78;
+      char *IpString = IP_INTERFACE_1;
+      int i = 0;
+      int k = 0;
+      int val = 0;
+      for(i=0;i<4;i++) {
+         val = 0;
+         while((IpString[k] != '.') && (IpString[k] != '\0')) {
+            val = val * 10 + IpString[k] - 48;
+            printf (" %u ", val);
+            k++;
+         }
+         k++;
+         ip[i] = val;
+         printf ("Ip index %u %d\n", i, ip[i]);
+      }
+
+ //     ip[0] = 192;
+  //    ip[1] = 168;
+  //    ip[2] = 78;
       if(1) { // test accept otherwise test connect
-         ip[3] = 2;
+  //       ip[3] = 2;
          init_socket_example(23, ip); // this call is blocking call. 
       }
       else {
-         ip[3] = 3;
+  //       ip[3] = 3;
          init_socket_example_connect(23, ip); // this call is blocking call. 
       }
       //init_socket_example(24, ip); // this call is blocking call. 
@@ -706,10 +722,25 @@ MAIN(int argc, char **argv)
    //   temp.HwAddress[i] = 0x01;
    }
    temp.InterfaceNumber = 1;
-   temp.IP[0] = 192;
-   temp.IP[1] = 168;
-   temp.IP[2] = 78;
-   temp.IP[3] = 2;
+      char *IpString = IP_INTERFACE_1;
+  //    int i = 0;
+      int k = 0;
+      int val = 0;
+      for(i=0;i<4;i++) {
+         val = 0;
+         while((IpString[k] != '.') && (IpString[k] != '\0')) {
+            val = val * 10 + IpString[k] - 48;
+            printf (" %u ", val);
+            k++;
+         }
+         k++;
+         temp.IP[i] = val;
+         printf ("Ip index %u %d\n", i, temp.IP[i]);
+      }
+//   temp.IP[0] = 192;
+//   temp.IP[1] = 168;
+//   temp.IP[2] = 78;
+//   temp.IP[3] = 2;
    IfList[0] = &temp;
    InitLogger();
    InitEtherInterface();
