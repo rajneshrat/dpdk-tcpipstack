@@ -11,6 +11,7 @@
 #include "tcp.h"
 #include "tcp_states.h"
 #include "logger.h"
+#include "main.h"
 
 uint8_t add_mss_option(struct rte_mbuf *mbuf, uint16_t mss_value)
 {

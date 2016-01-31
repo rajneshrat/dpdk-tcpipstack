@@ -5,6 +5,8 @@
 #include "tcp_common.h"
 #include <pthread.h>
 #include <rte_mempool.h>
+#include "main.h"
+
 enum Msg_Type {
    SOCKET_CLOSE,
    SEND_DATA,
@@ -44,6 +46,7 @@ socket_open(STREAM_TYPE stream)
    struct tcb *ptcb;
 // future set this as default instead of 2000.
    ptcb = alloc_tcb(2000, 2000);
+   printf("socket open allocated tcb %p\n", ptcb);
    return ptcb->identifier; 
 }
 
@@ -53,14 +56,16 @@ sock_bridge_bind(struct sock_bridge_addr *addr)
 
 
 }
-
+ 
+struct tcb* get_tcb_by_identifier(int identifier);
 int
 socket_bind(int identifier, struct sock_addr *serv_addr)
 {
    struct tcb *ptcb;
    int i;
 
-   ptcb = get_tcb_by_identifier(identifier);
+   ptcb = (struct tcb *) get_tcb_by_identifier(identifier);
+   printf("socket bind received tcb %p\n", ptcb);
    if(ptcb == NULL) {
       return -1; // use enum here
    }

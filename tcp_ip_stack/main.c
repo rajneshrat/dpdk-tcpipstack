@@ -72,6 +72,8 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 
+#include <assert.h>
+#include "config.h"
 #include "main.h"
 #include "etherin.h"
 #include "ether.h"
@@ -274,7 +276,7 @@ l2fwd_main_loop(void)
 			portid);
 	}
 
-   portid = 1;//ports ++;
+   portid = 0;//ports ++;
 
 	while (1) {
 
@@ -524,9 +526,11 @@ MAIN(int argc, char **argv)
 
 
 	/* init EAL */
+	printf ("Launching cores\n");
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid EAL arguments\n");
+	printf ("Launching cores2\n");
 	argc -= ret;
 	argv += ret;
 
@@ -547,11 +551,14 @@ MAIN(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "Cannot init mbuf pool\n");
 
 	/* init driver(s) */
+/*
 	if (rte_pmd_init_all() < 0)
 		rte_exit(EXIT_FAILURE, "Cannot init pmd\n");
-
-	if (rte_eal_pci_probe() < 0)
-		rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
+*/
+//	if (rte_eal_pci_probe() < 0)
+//		rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
+	printf ("Launching cores2\n");
+	argc -= ret;
 
 	nb_ports = rte_eth_dev_count();
 	if (nb_ports == 0)
@@ -559,6 +566,18 @@ MAIN(int argc, char **argv)
 
 	if (nb_ports > RTE_MAX_ETHPORTS)
 		nb_ports = RTE_MAX_ETHPORTS;
+
+   if(nb_ports > TOTAL_PORTS) {
+      nb_ports = TOTAL_PORTS;
+      printf("Total ports configured is less than available.\n");
+   }
+   if(nb_ports < TOTAL_PORTS) {
+      printf("Ports configured is less than available. Giving UP\n");
+      assert(0);
+      return -1;
+   }
+   
+	printf ("Launching cores\n");
 
 	/*
 	 * Each logical core is assigned a dedicated TX queue on each port.

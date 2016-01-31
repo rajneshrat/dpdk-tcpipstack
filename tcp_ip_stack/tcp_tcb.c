@@ -40,6 +40,7 @@ struct tcb* alloc_tcb(uint16_t MaxWindSize, uint16_t CurrentWindSize)
       assert(0);
       printf("malloc failed\n");
    }
+   printf("Allocated a new tcb %p\n", ptcb);
    memset(ptcb, 0, sizeof(struct tcb));
    ptcb->identifier = IdentifierCount++;
    sprintf(ptcb->TCB_TO_SOCKET_RING_NAME,"TtoS%d", ptcb->identifier);
@@ -87,14 +88,19 @@ struct tcb* alloc_tcb(uint16_t MaxWindSize, uint16_t CurrentWindSize)
 }
 
 struct tcb* get_tcb_by_identifier(int identifier)
+//uint64_t get_tcb_by_identifier(int identifier)
 {
    int i;
+   //uint64_t value = 0x7fbe80008c0;
+   uint64_t value = 0x7f780008c0;
    struct tcb *ptcb = NULL;
    for(i=0; i<Ntcb; i++) {  // change it to hash type later
       ptcb = tcbs[i];
       //logger(TCB, NORMAL,"Finding the tcb\n");
      // logger(TCB, NORMAL,"identifier is  = %d\n",ptcb->identifier); 
       if(ptcb && ptcb->identifier == identifier) {
+	 printf("get_tcb returing tcb as %p\n", ptcb);
+     //    return value;
          return ptcb;
       }
    }

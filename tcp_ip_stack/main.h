@@ -42,4 +42,6 @@
 
 int MAIN(int argc, char **argv);
 
+struct rte_mbuf *get_mbuf();
+
 #endif /* _MAIN_H_ */

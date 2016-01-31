@@ -8,6 +8,7 @@
 #include "types.h"
 #include "arp.h"
 #include "ether.h"
+#include "main.h"
 
 #define ARP_TABLE_SIZE 100
 
@@ -178,7 +179,8 @@ send_arp(struct arp *arp_pkt)
      // memcpy(&eth->d_addr.addr_bytes[0], arp_pkt->src_hw_add, sizeof(arp_pkt->hw_len));
       memcpy(&eth->s_addr.addr_bytes[0], arp_pkt->src_hw_add, sizeof(arp_pkt->hw_len));
    }
-   send_packet_out(mbuf, 1);
+// fix the below, port should be dfrom routing.
+   send_packet_out(mbuf, 0);
 }
 
 int

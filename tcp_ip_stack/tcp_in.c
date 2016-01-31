@@ -11,6 +11,7 @@
 #include "tcp_tcb.h"
 #include "tcp.h"
 #include "tcp_states.h"
+#include "main.h"
 
 int tcpchecksumerror;
 int tcpnopcb;
