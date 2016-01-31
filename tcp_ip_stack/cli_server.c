@@ -7,12 +7,9 @@
 #include "ether.h"
 #include "cli_server.h"
 #include "arp.h"
+#include "logger.h"
+#include "main.h"
 
-void showcommand(int socket_id)
-{
-   char *command_list = "help\n test";
-   write(socket_id , command_list , strlen(command_list));
-}  
 
 void command_config(int socket_id)
 {
@@ -46,7 +43,6 @@ void show_interfaces(int socket_id)
 
 void command_not_found(int socket_id)
 {
-   int TotalInterfaces = GetTotalInterfaces();
    int index = 0;
    char buffer[1024];
    index += sprintf(buffer + index, " ****Command not found. Enter help for command list.****\n");
@@ -60,7 +56,6 @@ void add_ip(int socket_id, char *Ip)
    int num = 0;
    int index = 0;
    char buffer[1024];
-   struct Interface *IfList;
    struct Interface temp;
    temp.InterfaceNumber = 0;
 printf("IP is %s\n", Ip);
@@ -152,7 +147,6 @@ int perform_command(int socket_id, char *input)
 
 int show_help(int socket_id)
 {
-   int i, j;
    int index = 0;
    char buffer[1024];
    index += sprintf(buffer + index, "showinterface\n");
@@ -160,9 +154,10 @@ int show_help(int socket_id)
    index += sprintf(buffer + index, "configinterface\n");
    index += sprintf(buffer + index, "help\n");
    write(socket_id, buffer, strlen(buffer));
+   return 0;
 }
 
-int cli_server_init()
+int cli_server_init(void)
 {
     int socket_desc , client_sock , c , read_size;
     struct sockaddr_in server , client;

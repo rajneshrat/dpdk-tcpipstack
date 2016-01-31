@@ -69,7 +69,7 @@ void send_reset(struct ipv4_hdr *ip_hdr, struct tcp_hdr *t_hdr)
 int tcp_in(struct rte_mbuf *mbuf)
 {
    struct tcb *ptcb = NULL;
-   logger(TCP, NORMAL, "received tcp packet\n");
+   logger(LOG_TCP, NORMAL, "received tcp packet\n");
    //calculate tcp checksum.
    if(0) {
       rte_pktmbuf_free(mbuf);
@@ -84,7 +84,7 @@ int tcp_in(struct rte_mbuf *mbuf)
    if(ptcb == NULL) {
       ++tcpnopcb;
       rte_pktmbuf_free(mbuf);
-      logger(TCP, CRITICAL, "found null tcb\n");
+      logger(LOG_TCP, CRITICAL, "found null tcb\n");
       send_reset(hdr, ptcphdr);
       return -1;
    }
@@ -100,7 +100,7 @@ int tcp_in(struct rte_mbuf *mbuf)
   
    printf("tcb identifier = %d\n", ptcb->identifier);
    if(tcpok(ptcb, mbuf)) {
-      logger(TCP, NORMAL, "sending tcp packet\n");
+      logger(LOG_TCP, NORMAL, "sending tcp packet\n");
       tcpswitch[ptcb->state](ptcb, ptcphdr, hdr, mbuf);
       //(tcpswitch[1])(ptcb, mbuf);
    }

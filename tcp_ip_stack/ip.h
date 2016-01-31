@@ -14,11 +14,7 @@ int
 ip_in(struct rte_mbuf *mbuf);
 
 int
-InitIPQueue()
-{
-   logger(IP, NORMAL, "Initializing IP out queue.\n");
-   
-}
+InitIPQueue(void);
 
 struct _ip_send_queue_ {
    struct rte_mbuf *mbuf;

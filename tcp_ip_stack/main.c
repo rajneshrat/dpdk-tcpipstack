@@ -77,6 +77,12 @@
 #include "main.h"
 #include "etherin.h"
 #include "ether.h"
+#include "tcp_tcb.h"
+#include "etherout.h"
+#include "logger.h"
+#include "socket_tester.h"
+#include "socket_interface.h"
+#include "cli_server.h"
 
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
 
@@ -192,7 +198,7 @@ struct l2fwd_port_statistics port_statistics[RTE_MAX_ETHPORTS];
 static int64_t timer_period = 10 * TIMER_MILLISECOND * 1000; /* default period is 10 seconds */
 
 
-struct rte_mbuf *get_mbuf()
+struct rte_mbuf *get_mbuf(void)
 {
    struct rte_mbuf *mbuf = NULL;   
    mbuf = rte_pktmbuf_alloc(l2fwd_pktmbuf_pool);
@@ -206,7 +212,6 @@ send_packet_out(struct rte_mbuf *mbuf, int port)
    count ++;
    
    static struct rte_mbuf *last = NULL;
-   struct rte_mbuf *rte_mbuf[2];
    if(last== mbuf) {
       printf("Sending same buf again.\n");
    }
@@ -217,7 +222,8 @@ send_packet_out(struct rte_mbuf *mbuf, int port)
    }
    mbuf_arr[0] = mbuf;
    //printf("sending port from %d\n", port);
-   rte_eth_tx_burst(port, 0, &mbuf_arr[0], 1);
+   int total_packets_sent = rte_eth_tx_burst(port, 0, &mbuf_arr[0], 1);
+   return total_packets_sent;
 }
 
 /* main processing loop */
@@ -225,25 +231,19 @@ static void
 l2fwd_main_loop(void)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
-	struct rte_mbuf *m;
 	unsigned lcore_id;
-	uint64_t prev_tsc, diff_tsc, cur_tsc, timer_tsc;
-	unsigned i, j, portid, nb_rx;
+	unsigned i,  portid, nb_rx;
 	struct lcore_queue_conf *qconf;
-	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
 
-	prev_tsc = 0;
-	timer_tsc = 0;
 	lcore_id = rte_lcore_id();
 
 	qconf = &lcore_queue_conf[lcore_id];
-   static int  ports = 0;
    printf("Call for %d\n.", lcore_id);
 	if ((lcore_id == 1)) {  // core 1 dedicaated for my socket example.
       printf("using core 1 for server socket listner\n");
 		RTE_LOG(INFO, L2FWD, "lcore %u has nothing to do\n", lcore_id);
       uint8_t ip[4];
-      char *IpString = IP_INTERFACE_1;
+      const char *IpString = IP_INTERFACE_1;
       int i = 0;
       int k = 0;
       int val = 0;
@@ -288,8 +288,8 @@ l2fwd_main_loop(void)
 	for (i = 0; i < qconf->n_rx_port; i++) {
 
 //		portid = qconf->rx_port_list[i];
-		RTE_LOG(INFO, L2FWD, " -- lcoreid=%u portid=%u\n", lcore_id,
-			portid);
+	//	RTE_LOG(INFO, L2FWD, " -- lcoreid=%u portid=%u\n", lcore_id,
+	//		portid);
 	}
 
    portid = 0;//ports ++;
@@ -297,7 +297,7 @@ l2fwd_main_loop(void)
 	while (1) {
 
 //		cur_tsc = rte_rdtsc();
-	   int i;	
+	   unsigned int i;	
 //      if(portid) 
 //         portid = 0;
 //      else 
@@ -520,9 +520,8 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 	}
 }
 
-void init_socket_example(int port, uint8_t *ip);
 
-int GetTotalInterfaces()
+int GetTotalInterfaces(void)
 {
 	return rte_eth_dev_count();
 }
@@ -537,7 +536,7 @@ MAIN(int argc, char **argv)
 	uint8_t nb_ports;
 	uint8_t nb_ports_available;
 	uint8_t portid, last_port;
-	unsigned lcore_id, rx_lcore_id;
+	unsigned rx_lcore_id;
 	unsigned nb_ports_in_mask = 0;
 
 
@@ -722,7 +721,7 @@ MAIN(int argc, char **argv)
    //   temp.HwAddress[i] = 0x01;
    }
    temp.InterfaceNumber = 1;
-      char *IpString = IP_INTERFACE_1;
+      const char *IpString = IP_INTERFACE_1;
   //    int i = 0;
       int k = 0;
       int val = 0;

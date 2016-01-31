@@ -18,12 +18,12 @@ ether_in(struct rte_mbuf *mbuf)
    
    switch(ntohs(eth->ether_type)) {
       case ETHER_TYPE_ARP : 
-         logger(ARP, NORMAL, "seen arp packet\n");
+         logger(LOG_ARP, NORMAL, "seen arp packet\n");
          //printf("arp packet\n");
          arp_in(mbuf);
          break;
       case ETHER_TYPE_IPv4 : 
-         logger(IP, NORMAL, "seen ip packet\n");
+         logger(LOG_IP, NORMAL, "seen ip packet\n");
       //printf("IP packet\n");
          ip_in(mbuf);
          break; 

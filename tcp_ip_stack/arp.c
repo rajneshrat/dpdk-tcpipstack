@@ -52,10 +52,10 @@ send_arp_reply(unsigned char *src_pr_add, unsigned char *dst_pr_add)
       temp = temp->Next;
    }
    if(temp == NULL) {
-      logger(ARP, NORMAL, "Arp request failed, address not hosted\n");
+      logger(LOG_ARP, NORMAL, "Arp request failed, address not hosted\n");
       return 0;
    }
-   logger(ARP, NORMAL, "IP found in interface list\n");
+   logger(LOG_ARP, NORMAL, "IP found in interface list\n");
    //printf("Arp request for %x\n", ip_add);
    int status = GetInterfaceMac(temp->InterfaceNumber, mac);
    //printf("arp reply status = %d and mac %x\n", status, mac[0]);
@@ -90,10 +90,10 @@ send_arp_request(unsigned char *src_pr_add, unsigned char *dst_pr_add)
       temp = temp->Next;
    }
    if(temp == NULL) {
-      logger(ARP, NORMAL, "Arp request failed, address not hosted\n");
+      logger(LOG_ARP, NORMAL, "Arp request failed, address not hosted\n");
       return 0;
    }
-   logger(ARP, NORMAL, "IP found in interface list\n");
+   logger(LOG_ARP, NORMAL, "IP found in interface list\n");
    int status = GetInterfaceMac(temp->InterfaceNumber, mac);
    memcpy(arp_reply->src_hw_add, mac, HW_LEN_ETHER); 
    memcpy(arp_reply->dst_hw_add, dest_mac, HW_LEN_ETHER); 
@@ -121,7 +121,7 @@ arp_in (struct rte_mbuf *mbuf)
       /*
          uint32_t ip_add = GetIntAddFromChar(arp_pkt->src_pr_add, 0);
          add_mac((ip_add), arp_pkt->src_hw_add);
-         logger(ARP, NORMAL, "seen arp packet\n");
+         logger(LOG_ARP, NORMAL, "seen arp packet\n");
          break;
       */
       case ARP_REPLY ://
@@ -141,9 +141,9 @@ print_add(uint32_t ip_add)
    for(i=0;i<4;i++) {
       ip = ip_add >> 24;
       ip_add = ip_add << 8;
-      log_print(ARP, ALL, "%u", ip);
+      log_print(LOG_ARP, ALL, "%u", ip);
       if(i != 3) {
-         log_print(ARP, ALL, ".");
+         log_print(LOG_ARP, ALL, ".");
       }
    }
 }
@@ -178,10 +178,10 @@ send_arp(struct arp *arp_pkt)
    assert(mbuf != NULL);
    arp_hdr = (struct arp *)rte_pktmbuf_prepend (mbuf, sizeof(struct arp));
    eth = (struct ether_hdr *)rte_pktmbuf_prepend (mbuf, sizeof(struct ether_hdr)); 
-   logger(ARP, NORMAL, "Sending arp packet\n"); 
+   logger(LOG_ARP, NORMAL, "Sending arp packet\n"); 
    memcpy(arp_hdr, arp_pkt, sizeof(struct arp));
    if(arp_pkt->opcode == ntohs(ARP_REQ)) {
-      logger(ARP, ALL, "Sending arp request");
+      logger(LOG_ARP, ALL, "Sending arp request");
       eth->ether_type = htons(ETHER_TYPE_ARP);
       for(i=0;i<6;i++) {
          eth->d_addr.addr_bytes[i] = 0xff;
@@ -189,7 +189,7 @@ send_arp(struct arp *arp_pkt)
       memcpy(&eth->s_addr.addr_bytes[0], arp_pkt->src_hw_add, sizeof(arp_pkt->hw_len));
    }
    if(arp_pkt->opcode == ntohs(ARP_REPLY)) {
-      logger(ARP, ALL, "Sending arp reply");
+      logger(LOG_ARP, ALL, "Sending arp reply");
       eth->ether_type = htons(ETHER_TYPE_ARP);
       for(i=0;i<6;i++) {
          eth->d_addr.addr_bytes[i] = 0xff;  // should not be a brodcast ideally. fix it.
@@ -207,22 +207,22 @@ get_mac(uint32_t ipv4_addr, unsigned char *mac_addr)
    struct arp_map *temp = NULL;
    int i;
 
-   logger(ARP, ALL, "Getting mac for ");
+   logger(LOG_ARP, ALL, "Getting mac for ");
    print_add(ipv4_addr);
    temp = arp_map_list;
    while(temp) {
       if(temp->ipv4_addr == ipv4_addr) {
          memcpy(mac_addr, temp->mac_addr, 6);
-         logger(ARP, NORMAL, "mac found\n");
+         logger(LOG_ARP, NORMAL, "mac found\n");
          for(i=0;i<6;i++) {
-            //logger(ARP, NORMAL, "%x", temp->mac_addr[i]);
-            logger(ARP, NORMAL, "%x", mac_addr[i]);
+            //logger(LOG_ARP, NORMAL, "%x", temp->mac_addr[i]);
+            logger(LOG_ARP, NORMAL, "%x", mac_addr[i]);
          }
          return 1;
       }
       temp = temp->next;
    }
-   logger(ARP, NORMAL, "No mac found\n");
+   logger(LOG_ARP, NORMAL, "No mac found\n");
    return 0;
 }
 
@@ -233,7 +233,7 @@ get_arp_table(char *buffer, int total_len)
    int i;
    int len = 0;
    temp = arp_map_list;
-   logger(ARP, NORMAL, "printing arp table.\n");
+   logger(LOG_ARP, NORMAL, "printing arp table.\n");
    while(temp) {
       len += sprintf(buffer + len, "\n");
       len += sprintf(buffer + len, " IP = "); 
@@ -254,15 +254,15 @@ print_arp_table()
    struct arp_map *temp = NULL;
    int i;
    temp = arp_map_list;
-   logger(ARP, NORMAL, "printing arp table.\n");
+   logger(LOG_ARP, NORMAL, "printing arp table.\n");
    while(temp) {
-      log_print(ARP, NORMAL, " IP = "); 
+      log_print(LOG_ARP, NORMAL, " IP = "); 
       print_add(temp->ipv4_addr);
-      log_print(ARP, NORMAL, " mac = ");  
+      log_print(LOG_ARP, NORMAL, " mac = ");  
       for(i=0; i<6; i++) {
-         log_print(ARP, NORMAL, "%x::", temp->mac_addr[i]);
+         log_print(LOG_ARP, NORMAL, "%x::", temp->mac_addr[i]);
       }
-      log_print(ARP, NORMAL, "\n");
+      log_print(LOG_ARP, NORMAL, "\n");
       temp = temp->next;
    }
 }
@@ -274,12 +274,12 @@ add_mac(uint32_t ipv4_addr, unsigned char *mac_addr)
    struct arp_map *last = NULL;
    int i;
 
-   logger(ARP, ALL, "Adding mac for ");
+   logger(LOG_ARP, ALL, "Adding mac for ");
    print_add(ipv4_addr);
    for(i=0;i<6;i++) {
-      log_print(ARP, ALL, " %x", mac_addr[i]);
+      log_print(LOG_ARP, ALL, " %x", mac_addr[i]);
    }
-   log_print(ARP, ALL, "\n");
+   log_print(LOG_ARP, ALL, "\n");
    
    temp = arp_map_list;
    while(temp) {
@@ -293,7 +293,7 @@ add_mac(uint32_t ipv4_addr, unsigned char *mac_addr)
    }
    else {
       arp_map_list = temp;
-      logger(ARP, ALL, " creating a new arp list.\n");
+      logger(LOG_ARP, ALL, " creating a new arp list.\n");
    }
    temp->ipv4_addr = ipv4_addr;
    memcpy(temp->mac_addr, mac_addr, 6);

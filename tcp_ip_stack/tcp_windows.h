@@ -6,8 +6,11 @@
 #include <rte_mempool.h>
 #include "types.h"
 #include "common_header.h"
+#include <rte_tcp.h>
 //#include "tcp.h"
 #include "tcp_tcb.h"
+
+struct tcb; // forward declaration
 
 struct SequenceLengthPair{
    uint32_t SequenceNumber;

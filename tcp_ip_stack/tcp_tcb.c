@@ -20,7 +20,7 @@ const unsigned int tcb_socket_ring_size = 1024;
 int Ntcb = 0;
 struct tcb *tcbs[TOTAL_TCBS];
 
-void InitTcpTcb()
+void InitTcpTcb(void)
 {
    InitSocketTcbRing();
    InitSocketInterface();
@@ -130,13 +130,13 @@ struct tcb* findtcb(struct tcp_hdr *ptcphdr, struct ipv4_hdr *hdr)
       if(ptcb == NULL) {
          continue;
       }
-      logger(TCB, NORMAL,"searching for tcb %u %u %d %d   found %u %u %d %d for %d\n", ntohl(hdr->src_addr), hdr->dst_addr, src_port, dest_port, ptcb->ipv4_src, ptcb->ipv4_dst, ptcb->sport, ptcb->dport, ptcb->identifier);
+      logger(LOG_TCB, NORMAL,"searching for tcb %u %u %d %d   found %u %u %d %d for %d\n", ntohl(hdr->src_addr), hdr->dst_addr, src_port, dest_port, ptcb->ipv4_src, ptcb->ipv4_dst, ptcb->sport, ptcb->dport, ptcb->identifier);
    //   logger(TCP, NORMAL, "sending syn-ack packet\n");
       if((ptcb->dport == dest_port) && 
          (ptcb->sport == src_port) && 
          (ptcb->ipv4_dst == hdr->dst_addr) &&
          (ptcb->ipv4_src == ntohl(hdr->src_addr))) {
-         logger(TCB, NORMAL,"Found stablized port\n");
+         logger(LOG_TCB, NORMAL,"Found stablized port\n");
          return ptcb; 
       }
    }
@@ -144,7 +144,7 @@ struct tcb* findtcb(struct tcp_hdr *ptcphdr, struct ipv4_hdr *hdr)
       ptcb = tcbs[i];
       if(ptcb->state == LISTENING) {
          if((ptcb->dport) == dest_port) {
-            logger(TCB, NORMAL,"Found a listening tcb. listening port = %d, packet port = %d\n", ptcb->dport, dest_port);
+            logger(LOG_TCB, NORMAL,"Found a listening tcb. listening port = %d, packet port = %d\n", ptcb->dport, dest_port);
             return ptcb; 
          }
       }

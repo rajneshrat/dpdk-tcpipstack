@@ -3,7 +3,7 @@
 #include <rte_ether.h>
 #include <assert.h>
 #include <rte_ip.h>
-
+#include "etherout.h"
 #include <stdio.h>
 
 static const char *_MSG_POOL = "MSG_POOL_IP_ETHER_PACKETS";
@@ -62,7 +62,7 @@ void InitIpToEtherRing()
 }
 
 int
-InitEtherInterface()
+InitEtherInterface(void)
 {
    InitIpToEtherRing();
 }
@@ -109,7 +109,7 @@ EnqueueMBuf(struct rte_mbuf *mbuf)
 }
 
 int
-CheckEtherOutRing()
+CheckEtherOutRing(void)
 {
    struct rte_mbuf **Msg, *mbuf;
    int mac_status = 0;

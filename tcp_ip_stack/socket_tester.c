@@ -11,7 +11,7 @@ void *DoWork(void *test)
    int new_socket = *((int *) test);
    char buffer[1024];
    int len = 0;
-   logger(SOCKET, NORMAL, "coming off accept\n");
+   logger(LOG_SOCKET, NORMAL, "coming off accept\n");
    printf("Sending dat at socket %d\n", new_socket);
    socket_send(new_socket, "Hello World", 12);
    printf("waiting on socket read\n");
@@ -86,7 +86,7 @@ void init_socket_example(int port, uint8_t *ip)
    socket_listen(socket, 5);
    struct sock_addr client;
 //   printf("Waiting for accept\n");
-   logger(SOCKET, NORMAL, "waiting on accept\n");
+   logger(LOG_SOCKET, NORMAL, "waiting on accept\n");
    pthread_attr_t attr;
    int thread_id = 0;
    while(1) {

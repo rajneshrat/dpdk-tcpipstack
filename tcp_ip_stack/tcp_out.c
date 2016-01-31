@@ -56,12 +56,12 @@ void sendtcpdata(struct tcb *ptcb, struct rte_mbuf *mbuf, char *data, int len)
    uint8_t tcp_len = 20 + option_len;
    uint8_t pad = (tcp_len%4) ? 4 - (tcp_len % 4): 0;
    tcp_len += pad;
-   logger(TCP, NORMAL, "padding option %d\n",  pad); 
+   logger(LOG_TCP, NORMAL, "padding option %d\n",  pad); 
    char *nop = rte_pktmbuf_append (mbuf, pad); // always pad the option to make total size multiple of 4.
    memset(nop, 0, pad);
    tcp_len = (tcp_len + 3) / 4;  // len is in multiple of 4 bytes;  20  will be 5
    tcp_len = tcp_len << 4; // len has upper 4 bits position in tcp header.
-   logger(TCP, NORMAL, "sending tcp data of len %d total %d\n", data_len, tcp_len);
+   logger(LOG_TCP, NORMAL, "sending tcp data of len %d total %d\n", data_len, tcp_len);
    struct tcp_hdr *ptcphdr = (struct tcp_hdr *)rte_pktmbuf_prepend (mbuf, sizeof(struct tcp_hdr));
   // printf("head room2 = %d\n", rte_pktmbuf_headroom(mbuf));
    if(ptcphdr == NULL) {
@@ -94,13 +94,13 @@ void sendtcppacket(struct tcb *ptcb, struct rte_mbuf *mbuf, char *data, int len)
    uint8_t tcp_len = 20 + option_len;
    uint8_t pad = (tcp_len%4) ? 4 - (tcp_len % 4): 0;
    tcp_len += pad;
-   logger(TCP, NORMAL, "padding option %d\n",  pad); 
+   logger(LOG_TCP, NORMAL, "padding option %d\n",  pad); 
    char *nop = rte_pktmbuf_append (mbuf, pad); // always pad the option to make total size multiple of 4.
    memset(nop, 0, pad);
 
    tcp_len = (tcp_len + 3) / 4;  // len is in multiple of 4 bytes;  20  will be 5
    tcp_len = tcp_len << 4; // len has upper 4 bits position in tcp header.
-   logger(TCP, NORMAL, "sending tcp packet\n");
+   logger(LOG_TCP, NORMAL, "sending tcp packet\n");
    struct tcp_hdr *ptcphdr = (struct tcp_hdr *)rte_pktmbuf_prepend (mbuf, sizeof(struct tcp_hdr));
   // printf("head room2 = %d\n", rte_pktmbuf_headroom(mbuf));
    if(ptcphdr == NULL) {
@@ -134,13 +134,13 @@ void sendtcpack(struct tcb *ptcb, struct rte_mbuf *mbuf, char *data, int len)
    uint8_t tcp_len = 20 + option_len;
    uint8_t pad = (tcp_len%4) ? 4 - (tcp_len % 4): 0;
    tcp_len += pad;
-   logger(TCP, NORMAL, "padding option %d\n",  pad); 
+   logger(LOG_TCP, NORMAL, "padding option %d\n",  pad); 
    char *nop = rte_pktmbuf_append (mbuf, pad); // always pad the option to make total size multiple of 4.
    memset(nop, 0, pad);
 
    tcp_len = (tcp_len + 3) / 4;  // len is in multiple of 4 bytes;  20  will be 5
    tcp_len = tcp_len << 4; // len has upper 4 bits position in tcp header.
-   logger(TCP, NORMAL, "sending tcp packet\n");
+   logger(LOG_TCP, NORMAL, "sending tcp packet\n");
    struct tcp_hdr *ptcphdr = (struct tcp_hdr *)rte_pktmbuf_prepend (mbuf, sizeof(struct tcp_hdr));
   // printf("head room2 = %d\n", rte_pktmbuf_headroom(mbuf));
    if(ptcphdr == NULL) {
@@ -171,7 +171,7 @@ void sendsyn(struct tcb *ptcb)
    uint8_t tcp_len = 20 ;
    tcp_len = (tcp_len + 3) / 4;  // len is in multiple of 4 bytes;  20  will be 5
    tcp_len = tcp_len << 4; // len has upper 4 bits position in tcp header.
-   logger(TCP, NORMAL, "sending tcp packet\n");
+   logger(LOG_TCP, NORMAL, "sending tcp packet\n");
    struct tcp_hdr *ptcphdr = (struct tcp_hdr *)rte_pktmbuf_prepend (mbuf, sizeof(struct tcp_hdr));
   // printf("head room2 = %d\n", rte_pktmbuf_headroom(mbuf));
    if(ptcphdr == NULL) {
@@ -200,7 +200,7 @@ void sendfin(struct tcb *ptcb)
    uint8_t tcp_len = 20 ;
    tcp_len = (tcp_len + 3) / 4;  // len is in multiple of 4 bytes;  20  will be 5
    tcp_len = tcp_len << 4; // len has upper 4 bits position in tcp header.
-   logger(TCP, NORMAL, "sending tcp packet\n");
+   logger(LOG_TCP, NORMAL, "sending tcp packet\n");
    struct tcp_hdr *ptcphdr = (struct tcp_hdr *)rte_pktmbuf_prepend (mbuf, sizeof(struct tcp_hdr));
   // printf("head room2 = %d\n", rte_pktmbuf_headroom(mbuf));
    if(ptcphdr == NULL) {

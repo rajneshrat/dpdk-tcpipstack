@@ -39,9 +39,12 @@
 #else
 #define MAIN main
 #endif
+#include <rte_mbuf.h>
 
 int MAIN(int argc, char **argv);
 
-struct rte_mbuf *get_mbuf();
+struct rte_mbuf *get_mbuf(void);
+int GetTotalInterfaces(void);
+int send_packet_out(struct rte_mbuf *mbuf, int port);
 
 #endif /* _MAIN_H_ */

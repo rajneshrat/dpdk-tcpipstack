@@ -3,14 +3,15 @@
 #include <stdarg.h>
 #include "logger.h"
 #include <rte_common.h>
+#include "common_header.h"
 
 typedef enum {
-   ARP,
-   IP,
-   TCP,
-   SOCKET,
-   TCB,
-   TOTAL_FEATURE,
+   LOG_ARP,
+   LOG_IP,
+   LOG_TCP,
+   LOG_SOCKET,
+   LOG_TCB,
+   LOG_TOTAL_FEATURE,
 
 }FEATURE;
 
@@ -26,6 +27,8 @@ struct LoggerFeature {
 };
 
 extern struct LoggerFeature *LogFeature;
+void InitLogger(void);
+void EnableTrace(FEATURE Feature, TRACE_LEVEL Level);
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define logger log_print

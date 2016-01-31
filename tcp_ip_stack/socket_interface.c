@@ -135,7 +135,7 @@ extern struct tcb *tcbs[];
 extern int Ntcb;
 extern pthread_mutex_t tcb_alloc_mutex;
 int
-check_socket_out_queue()
+check_socket_out_queue(void)
 {
    Socket_Send_Msg *msg;
    int i;
