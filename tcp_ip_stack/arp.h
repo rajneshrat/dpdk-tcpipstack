@@ -53,6 +53,7 @@ struct arp_entry {
    struct rte_mbuf_queue *queue;
 };
 
+int get_arp_table(char *buffer, int len);
 int get_mac(uint32_t ipv4_addr, unsigned char *mac_addr);
 int add_mac(uint32_t ipv4_addr, unsigned char *mac_addr);
 #endif

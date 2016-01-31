@@ -41,4 +41,5 @@ struct tcb
 
 struct tcb* alloc_tcb(uint16_t, uint16_t);
 struct tcb* findtcb(struct tcp_hdr *ptcphdr, struct ipv4_hdr *hdr);
+struct tcb* get_tcb_by_identifier(int identifier);
 #endif

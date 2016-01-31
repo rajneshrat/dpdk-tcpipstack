@@ -17,4 +17,5 @@ struct ReceiveWindow_ {
 };
 
 typedef struct ReceiveWindow_ ReceiveWindow;
+ReceiveWindow *AllocWindow(int MaxSize, int CurrentSize);
 #endif

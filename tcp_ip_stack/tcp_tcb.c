@@ -10,6 +10,7 @@
 #include "tcp_tcb.h"
 #include "tcp_common.h"
 #include <pthread.h>
+#include "tcp_windows.h"
 
 #define TOTAL_TCBS 10
 pthread_mutex_t tcb_alloc_mutex;

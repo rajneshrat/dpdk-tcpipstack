@@ -3,8 +3,10 @@
 #include<sys/socket.h>
 #include<arpa/inet.h> 
 #include<unistd.h>  
+#include <assert.h>
 #include "ether.h"
 #include "cli_server.h"
+#include "arp.h"
 
 void showcommand(int socket_id)
 {
@@ -91,6 +93,17 @@ printf("confiuring interface\n");
 }
   
  
+void show_arps(int socket_id)
+{
+   char buffer[4096];
+   int len = get_arp_table(buffer, 4096);
+   if(len > 4096) {
+      assert(0);
+   } 
+   write(socket_id, buffer, strlen(buffer));
+}
+
+
 void command_showinterfacemac(int socket_id)
 {
    int i, j;
@@ -119,6 +132,10 @@ int perform_command(int socket_id, char *input)
       show_interfaces(socket_id);
       return 0;
    }
+   if(!strcmp(command, "showarp")) {
+      show_arps(socket_id);
+      return 0;
+   }
    if(!strcmp(command, "addip")) {
       i++;
       printf("parameter is %s\n", input + i);
@@ -139,6 +156,7 @@ int show_help(int socket_id)
    int index = 0;
    char buffer[1024];
    index += sprintf(buffer + index, "showinterface\n");
+   index += sprintf(buffer + index, "showarp\n");
    index += sprintf(buffer + index, "configinterface\n");
    index += sprintf(buffer + index, "help\n");
    write(socket_id, buffer, strlen(buffer));

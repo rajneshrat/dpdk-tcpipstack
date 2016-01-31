@@ -148,6 +148,24 @@ print_add(uint32_t ip_add)
    }
 }
 
+int 
+print_add_in_buf(uint32_t ip_add, char *buffer)
+{
+   int i;
+   uint8_t ip;
+   int len = 0;
+   uint32_t ip_hi = 0;
+   for(i=0;i<4;i++) {
+      ip = ip_add >> 24;
+      ip_add = ip_add << 8;
+      len += sprintf(buffer + len, "%u", ip);
+      if(i != 3) {
+         len += sprintf(buffer + len, ".");
+      }
+   }
+   return len;
+}
+
 void
 send_arp(struct arp *arp_pkt)
 {
@@ -187,20 +205,47 @@ int
 get_mac(uint32_t ipv4_addr, unsigned char *mac_addr) 
 {
    struct arp_map *temp = NULL;
+   int i;
 
    logger(ARP, ALL, "Getting mac for ");
    print_add(ipv4_addr);
    temp = arp_map_list;
    while(temp) {
       if(temp->ipv4_addr == ipv4_addr) {
-         strncpy(mac_addr, temp->mac_addr, 6);
+         memcpy(mac_addr, temp->mac_addr, 6);
          logger(ARP, NORMAL, "mac found\n");
+         for(i=0;i<6;i++) {
+            //logger(ARP, NORMAL, "%x", temp->mac_addr[i]);
+            logger(ARP, NORMAL, "%x", mac_addr[i]);
+         }
          return 1;
       }
       temp = temp->next;
    }
    logger(ARP, NORMAL, "No mac found\n");
    return 0;
+}
+
+int
+get_arp_table(char *buffer, int total_len)
+{
+   struct arp_map *temp = NULL;
+   int i;
+   int len = 0;
+   temp = arp_map_list;
+   logger(ARP, NORMAL, "printing arp table.\n");
+   while(temp) {
+      len += sprintf(buffer + len, "\n");
+      len += sprintf(buffer + len, " IP = "); 
+      len += print_add_in_buf(temp->ipv4_addr, buffer + len);
+      len += sprintf(buffer + len, " mac = ");  
+      for(i=0; i<6; i++) {
+         len += sprintf(buffer + len, "%x::", temp->mac_addr[i]);
+      }
+      len += sprintf(buffer + len, "\n");
+      temp = temp->next;
+   }
+   return len;
 }
 
 void

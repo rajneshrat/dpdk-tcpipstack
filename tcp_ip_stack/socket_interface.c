@@ -57,7 +57,6 @@ sock_bridge_bind(struct sock_bridge_addr *addr)
 
 }
  
-struct tcb* get_tcb_by_identifier(int identifier);
 int
 socket_bind(int identifier, struct sock_addr *serv_addr)
 {
