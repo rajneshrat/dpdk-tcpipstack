@@ -6,6 +6,8 @@
 //#include <assert.h>
 //#include <rte_ip.h>
 //#include <rte_tcp.h>
+#include "tcp_tcb.h"
+
 
 enum TCP_FLAGS {
    CWR = 0x80,
@@ -51,7 +53,8 @@ struct tcp_timestamp_option {
    uint32_t echo;
 } __attribute__((__packed__));
 
-void sendack(struct tcb *ptcb);
+//void sendack(struct tcb *ptcb);
+void sendack(struct tcb *);
 
 void sendsyn(struct tcb *ptcb);
 

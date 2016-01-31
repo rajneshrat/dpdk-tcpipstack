@@ -6,8 +6,9 @@
 #include "tcp_states.h"
 #include <sys/types.h>
 #include <inttypes.h>
+#include <rte_ip.h>
 extern int Ntcb;
-
+struct ReceiveWindow_; // forward declaration to break cyclic dependency.
 // make mac address also part of it.
 struct tcb
 {
@@ -26,7 +27,7 @@ struct tcb
    uint32_t ipv4_src;
    char dest_mac[6];
    char src_mac[6];
-   ReceiveWindow *RecvWindow;
+   struct ReceiveWindow_ *RecvWindow;
    TCP_STATE state;
    pthread_mutex_t mutex;
    int m_IsSocketTcbRingIntialized;

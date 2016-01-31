@@ -1,6 +1,7 @@
 #ifndef __TCP_STATES_H__
 #define __TCP_STATES_H__
 #include <rte_tcp.h>
+#include <rte_ip.h>
 //#include "tcp_tcb.h"
 struct tcb;
 

@@ -1,8 +1,5 @@
 #include "tcp_windows.h"
-#include "types.h"
 #include "tcp_tcb.h"
-#include <rte_ring.h>
-#include <rte_mempool.h>
 #include "tcp.h"
 
 //static struct rte_ring *socket_tcb_ring_send;
@@ -14,7 +11,7 @@ const unsigned int socket_tcb_ring_size = 1024;
 const unsigned int buffer_size = 1500;
 static struct rte_mempool *buffer_message_pool;
 
-void InitSocketTcbRing()
+void InitSocketTcbRing(void)
 {
  //  socket_tcb_ring_send = rte_ring_create(TCB_TO_SOCKET, socket_tcb_ring_size, SOCKET_ID_ANY, 0);
    buffer_message_pool = rte_mempool_create(_MSG_POOL, pool_size,
@@ -68,13 +65,14 @@ int AdjustPair(ReceiveWindow *Window, uint32_t StartSeqNumber, uint16_t Length)
       free(NextPair);
       NextPair = Pair->Next;
    }
+   return 0;
 }
 static int PushDataInQueue(int identifier)
 {
-   char Buffer[2000];
+   unsigned char Buffer[2000];
    int len = 0;
    struct tcb *ptcb = get_tcb_by_identifier(identifier);
-   if(len = GetData(identifier, Buffer)) {
+   if((len = GetData(identifier, Buffer))) {
       void *msg = NULL;
       if (rte_mempool_get(buffer_message_pool, &msg) < 0) {
          printf ("Failed to get message buffer\n");
@@ -86,6 +84,7 @@ static int PushDataInQueue(int identifier)
          rte_mempool_put(buffer_message_pool, msg);
       }
    }
+   return 0;
 }
 
 int AddData(unsigned char *data, uint16_t Length, uint32_t SequenceNumber, ReceiveWindow *Window, int identifier)
@@ -97,6 +96,7 @@ int AddData(unsigned char *data, uint16_t Length, uint32_t SequenceNumber, Recei
    memcpy(Window->Data + CurrentPointer, data, Length);
    printf("pushing data from index %d to length %d\n", CurrentPointer, Length);
    PushDataInQueue(identifier);
+   return 0;
 }
 
 int GetData(int identifier, unsigned char *Buffer)
@@ -105,7 +105,7 @@ int GetData(int identifier, unsigned char *Buffer)
    if(ptcb == NULL) {
       return -1;
    }
-   ReceiveWindow *Window = ptcb->RecvWindow;
+   ReceiveWindow *Window = (ReceiveWindow *) ptcb->RecvWindow;
    struct SequenceLengthPair *Pair = Window->SeqPairs;
    if(Pair) {
       int index = (Pair->SequenceNumber - Window->StartSequenceNumber) % Window->MaxSize;
@@ -118,10 +118,10 @@ int GetData(int identifier, unsigned char *Buffer)
    return 0;
 }
 
-int SendAck()
+int SendAck(void)
 {
-
-
+   printf("Sending Syn Ack\n");
+   return 0;
 
 }
 
@@ -129,8 +129,8 @@ int PushData(unsigned char *data, struct tcp_hdr* ptcphdr, uint16_t Length, stru
 {
 // future add assert if SequenceNumber is 0.
    uint32_t SequenceNumber = ntohl(ptcphdr->sent_seq);
-   ReceiveWindow *Window = ptcb->RecvWindow;
-   if(Window->SeqPairs && (SequenceNumber - Window->SeqPairs->SequenceNumber + Length) < Window->CurrentSize) { // sequence number out of receive window size 
+   ReceiveWindow *Window = (ReceiveWindow *) ptcb->RecvWindow;
+   if(Window->SeqPairs && ((SequenceNumber - Window->SeqPairs->SequenceNumber + Length) < Window->CurrentSize)) { // sequence number out of receive window size 
       printf("WARNING :: Out of window data, dropping all\n");
       return -1;
    }
@@ -144,12 +144,15 @@ int PushData(unsigned char *data, struct tcp_hdr* ptcphdr, uint16_t Length, stru
    struct SequenceLengthPair *Pair = Window->SeqPairs;
    ptcb->ack = Pair->SequenceNumber + Pair->Length;
    AddData(data, Length, SequenceNumber, Window, ptcb->identifier);
+   return 0;
    // unlock the sem if socket waiting for it.
 }
+
 int FreeWindow(ReceiveWindow *Window)
 {
    free(Window->Data);
    free(Window);
+   return 0;
 }
 
 ReceiveWindow *AllocWindow(int MaxSize, int CurrentSize)
