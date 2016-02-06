@@ -53,7 +53,16 @@ struct arp_entry {
    struct rte_mbuf_queue *queue;
 };
 
+void swapvalue(char *add1, char *add2, int len);
 int get_arp_table(char *buffer, int len);
+void send_arp(struct arp *arp_pkt);
+int print_add_in_buf(uint32_t ip_add, char *buffer);
+int arp_in (struct rte_mbuf *mbuf);
 int get_mac(uint32_t ipv4_addr, unsigned char *mac_addr);
 int add_mac(uint32_t ipv4_addr, unsigned char *mac_addr);
+int send_arp_request(unsigned char *src_pr_add, unsigned char *dst_pr_add);
+int send_arp_reply(unsigned char *src_pr_add, unsigned char *dst_pr_add);
+void print_add(uint32_t ip_add);
+void print_arp_table(void );
+void dump_arp_pkt(struct arp*);
 #endif

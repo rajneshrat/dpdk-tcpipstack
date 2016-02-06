@@ -32,7 +32,6 @@ swapvalue(char *add1, char *add2, int len)
 int
 send_arp_reply(unsigned char *src_pr_add, unsigned char *dst_pr_add)
 {
-   int i;
    struct arp *arp_reply = (struct arp *) malloc(sizeof(struct arp)); //rte_pktmbuf_prepend (new_mbuf, sizeof(struct arp));
 
    char mac[6];   
@@ -57,7 +56,6 @@ send_arp_reply(unsigned char *src_pr_add, unsigned char *dst_pr_add)
    }
    logger(LOG_ARP, NORMAL, "IP found in interface list\n");
    //printf("Arp request for %x\n", ip_add);
-   int status = GetInterfaceMac(temp->InterfaceNumber, mac);
    //printf("arp reply status = %d and mac %x\n", status, mac[0]);
    memcpy(arp_reply->src_hw_add, mac, HW_LEN_ETHER); 
    memcpy(arp_reply->dst_hw_add, dest_mac, HW_LEN_ETHER); 
@@ -65,12 +63,12 @@ send_arp_reply(unsigned char *src_pr_add, unsigned char *dst_pr_add)
    memcpy(arp_reply->dst_pr_add, dst_pr_add, PR_LEN_IPV4); 
    send_arp(arp_reply);
    free(arp_reply);
+   return 0;
 }
 
 int
 send_arp_request(unsigned char *src_pr_add, unsigned char *dst_pr_add)
 {
-   int i;
    struct rte_mbuf *new_mbuf = get_mbuf();
    struct arp *arp_reply = (struct arp *)rte_pktmbuf_prepend (new_mbuf, sizeof(struct arp));
 
@@ -94,12 +92,22 @@ send_arp_request(unsigned char *src_pr_add, unsigned char *dst_pr_add)
       return 0;
    }
    logger(LOG_ARP, NORMAL, "IP found in interface list\n");
-   int status = GetInterfaceMac(temp->InterfaceNumber, mac);
    memcpy(arp_reply->src_hw_add, mac, HW_LEN_ETHER); 
    memcpy(arp_reply->dst_hw_add, dest_mac, HW_LEN_ETHER); 
    memcpy(arp_reply->src_pr_add, src_pr_add, PR_LEN_IPV4); 
    memcpy(arp_reply->dst_pr_add, dst_pr_add, PR_LEN_IPV4); 
    send_arp(arp_reply);
+   return 0;
+}
+
+void dump_arp_pkt(struct arp* arp_pkt)
+{
+
+   printf("HW type =  %u\n", arp_pkt->hw_type);
+   printf("PR type =  %u\n", arp_pkt->pr_type);
+   printf("HW len =  %u\n", arp_pkt->hw_len);
+   printf("PR len =  %u\n", arp_pkt->pr_len);
+   printf("Opcode  %u\n", arp_pkt->opcode);
 }
 
 int
@@ -107,15 +115,18 @@ arp_in (struct rte_mbuf *mbuf)
 {
    assert(mbuf->buf_len >= sizeof(struct arp));
    struct arp *arp_pkt;
-	struct ether_hdr *eth;
+//	struct ether_hdr *eth;
    uint32_t ip_add = 0;
 
-	eth = rte_pktmbuf_mtod(mbuf, struct ether_hdr *);
+//	eth = rte_pktmbuf_mtod(mbuf, struct ether_hdr *);
 
    assert(rte_pktmbuf_data_len(mbuf) >= (sizeof(struct arp) + sizeof(struct ether_hdr)));
-   arp_pkt  = rte_pktmbuf_mtod(mbuf, char *) + sizeof(struct ether_hdr);
+   arp_pkt  = (struct arp*) (rte_pktmbuf_mtod(mbuf, unsigned char *) + sizeof(struct ether_hdr));
+   dump_arp_pkt(arp_pkt);
+//   printf("arp packet with opcode %u %u\n", arp_pkt->opcode, ntohs(arp_pkt->opcode));
    switch(ntohs(arp_pkt->opcode)) {
       case ARP_REQ ://
+         printf("seen arp request\n");
          send_arp_reply(arp_pkt->dst_pr_add, arp_pkt->src_pr_add);
          break;
       /*
@@ -130,6 +141,7 @@ arp_in (struct rte_mbuf *mbuf)
          break;
    //   default : assert(0);
    }
+   return 0;
 }
 
 void 
@@ -137,7 +149,6 @@ print_add(uint32_t ip_add)
 {
    int i;
    uint8_t ip;
-   uint32_t ip_hi = 0;
    for(i=0;i<4;i++) {
       ip = ip_add >> 24;
       ip_add = ip_add << 8;
@@ -154,7 +165,6 @@ print_add_in_buf(uint32_t ip_add, char *buffer)
    int i;
    uint8_t ip;
    int len = 0;
-   uint32_t ip_hi = 0;
    for(i=0;i<4;i++) {
       ip = ip_add >> 24;
       ip_add = ip_add << 8;
@@ -232,6 +242,7 @@ get_arp_table(char *buffer, int total_len)
    struct arp_map *temp = NULL;
    int i;
    int len = 0;
+   (void) total_len;
    temp = arp_map_list;
    logger(LOG_ARP, NORMAL, "printing arp table.\n");
    while(temp) {
@@ -249,7 +260,7 @@ get_arp_table(char *buffer, int total_len)
 }
 
 void
-print_arp_table()
+print_arp_table(void )
 {
    struct arp_map *temp = NULL;
    int i;

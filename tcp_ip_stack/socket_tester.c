@@ -3,17 +3,19 @@
 */
 
 #include "socket_interface.h"
+#include "socket_tester.h"
 #include <pthread.h>
 #include "logger.h"
 
 void *DoWork(void *test)
 {
    int new_socket = *((int *) test);
-   char buffer[1024];
+   unsigned char buffer[1024];
    int len = 0;
    logger(LOG_SOCKET, NORMAL, "coming off accept\n");
    printf("Sending dat at socket %d\n", new_socket);
-   socket_send(new_socket, "Hello World", 12);
+   const char *data = "Hello World";
+   socket_send(new_socket, (const unsigned char *) data, 12);
    printf("waiting on socket read\n");
 #if 0
    socket_read(new_socket, buffer, 10);
@@ -87,8 +89,7 @@ void init_socket_example(int port, uint8_t *ip)
    struct sock_addr client;
 //   printf("Waiting for accept\n");
    logger(LOG_SOCKET, NORMAL, "waiting on accept\n");
-   pthread_attr_t attr;
-   int thread_id = 0;
+   pthread_t thread_id = 0;
    while(1) {
       int *socket_child = malloc(sizeof(int));
       *socket_child = socket_accept(socket, &client);

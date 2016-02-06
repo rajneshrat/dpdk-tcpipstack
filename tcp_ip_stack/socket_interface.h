@@ -40,13 +40,15 @@ int socket_bind(int identifier, struct sock_addr *serv_addr);
 
 int socket_listen(int identifier, int queue_len);
 
-
-int socket_accept(int ser_id, struct sock_addr *client_addr);
-
-
 int socket_close(int identifier);
 
 int check_socket_out_queue(void);
 
+void InitSocketInterface(void);
+int socket_connect(int identifier, struct sock_addr *client_addr);
+int socket_accept(int ser_id, struct sock_addr *client_addr);
+int socket_send(int ser_id, const unsigned char *message, int len);
+int socket_read(int ser_id, char *buffer, int len);
+int socket_read_nonblock(int ser_id, unsigned char *buffer);
 
 #endif

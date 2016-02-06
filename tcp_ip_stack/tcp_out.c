@@ -12,10 +12,12 @@
 #include "tcp_states.h"
 #include "logger.h"
 #include "main.h"
+#include "tcp_out.h"
+#include "ip.h"
 
 uint8_t add_mss_option(struct rte_mbuf *mbuf, uint16_t mss_value)
 {
-   struct tcp_mss_option *mss_option = (struct tcp_option *)rte_pktmbuf_prepend (mbuf, sizeof(struct tcp_mss_option));
+   struct tcp_mss_option *mss_option = (struct tcp_mss_option *)rte_pktmbuf_prepend (mbuf, sizeof(struct tcp_mss_option));
    mss_option->type = 2;
    mss_option->len = 4;
    mss_option->value = htons(mss_value);
@@ -31,7 +33,7 @@ uint8_t add_winscale_option(struct rte_mbuf *mbuf, uint8_t value)
    return 3;
 }
 
-uint8_t add_tcp_data(struct rte_mbuf *mbuf, char *data, uint8_t len)
+uint8_t add_tcp_data(struct rte_mbuf *mbuf, unsigned char *data, uint8_t len)
 {
    char *src = (char *)rte_pktmbuf_prepend (mbuf, len);
    memcpy(src, data, len);
@@ -48,7 +50,7 @@ uint8_t add_timestamp_option(struct rte_mbuf *mbuf, uint32_t value, uint32_t ech
    return 10;
 }
 
-void sendtcpdata(struct tcb *ptcb, struct rte_mbuf *mbuf, char *data, int len)
+void sendtcpdata(struct tcb *ptcb, struct rte_mbuf *mbuf, unsigned char *data, int len)
 {
    //uint8_t tcp_len = 0x50 + add_mss_option(mbuf, 1300);// + add_winscale_option(mbuf, 7);
    uint8_t data_len = add_tcp_data(mbuf, data, len);
@@ -85,7 +87,7 @@ printf("ok sending tcp data\n");
    ip_out(ptcb, mbuf, ptcphdr, data_len); 
 }
 
-void sendtcppacket(struct tcb *ptcb, struct rte_mbuf *mbuf, char *data, int len)
+void sendtcppacket(struct tcb *ptcb, struct rte_mbuf *mbuf, unsigned char *data, int len)
 {
    //uint8_t tcp_len = 0x50 + add_mss_option(mbuf, 1300);// + add_winscale_option(mbuf, 7);
    uint8_t data_len = add_tcp_data(mbuf, data, len);
@@ -125,7 +127,7 @@ void sendtcppacket(struct tcb *ptcb, struct rte_mbuf *mbuf, char *data, int len)
 
 }
 
-void sendtcpack(struct tcb *ptcb, struct rte_mbuf *mbuf, char *data, int len)
+void sendtcpack(struct tcb *ptcb, struct rte_mbuf *mbuf, unsigned char *data, int len)
 {
    //uint8_t tcp_len = 0x50 + add_mss_option(mbuf, 1300);// + add_winscale_option(mbuf, 7);
    uint8_t data_len = add_tcp_data(mbuf, data, len);

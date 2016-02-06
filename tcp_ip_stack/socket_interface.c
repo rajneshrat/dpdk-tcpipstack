@@ -6,6 +6,8 @@
 #include <pthread.h>
 #include <rte_mempool.h>
 #include "main.h"
+#include "tcp_out.h"
+#include <unistd.h>
 
 enum Msg_Type {
    SOCKET_CLOSE,
@@ -21,13 +23,13 @@ typedef struct Socket_Send_Msg_ {
 }Socket_Send_Msg;
 
 //static struct rte_ring *socket_tcb_ring_recv = NULL;
-static const char *TCB_TO_SOCKET = "TCB_TO_SOCKET";
-static const char *SOCKET_TO_TCB = "SOCKET_TO_TCB";
+//static const char *TCB_TO_SOCKET = "TCB_TO_SOCKET";
+//static const char *SOCKET_TO_TCB = "SOCKET_TO_TCB";
 static const char *_MSG_POOL = "MSG_POOL";
 static struct rte_mempool *buffer_message_pool;
 
 
-void InitSocketInterface()
+void InitSocketInterface(void)
 {
 //   socket_tcb_ring_recv = rte_ring_lookup(TCB_TO_SOCKET);
    buffer_message_pool = rte_mempool_lookup(_MSG_POOL);
@@ -44,6 +46,7 @@ int
 socket_open(STREAM_TYPE stream)
 {
    struct tcb *ptcb;
+   (void) stream;
 // future set this as default instead of 2000.
    ptcb = alloc_tcb(2000, 2000);
    printf("socket open allocated tcb %p\n", ptcb);
@@ -53,15 +56,14 @@ socket_open(STREAM_TYPE stream)
 int
 sock_bridge_bind(struct sock_bridge_addr *addr)
 {
-
-
+   (void) addr;
+   return 0;
 }
  
 int
 socket_bind(int identifier, struct sock_addr *serv_addr)
 {
    struct tcb *ptcb;
-   int i;
 
    ptcb = (struct tcb *) get_tcb_by_identifier(identifier);
    printf("socket bind received tcb %p\n", ptcb);
@@ -81,7 +83,9 @@ socket_listen(int identifier, int queue_len)
 {
    struct tcb *ptcb;
 
+   (void) queue_len;
    ptcb = get_tcb_by_identifier(identifier);
+   (void) ptcb;
    // not implemented yet.
    return 0; //SUCCESS
 }
@@ -92,6 +96,7 @@ socket_accept(int ser_id, struct sock_addr *client_addr)
    struct tcb *ptcb = NULL;
    struct tcb *new_ptcb = NULL;
    
+   (void) client_addr;
    ptcb = get_tcb_by_identifier(ser_id);
    if(ptcb->WaitingOnAccept) {
       return 0;
@@ -110,11 +115,11 @@ socket_accept(int ser_id, struct sock_addr *client_addr)
 
 
 int
-socket_send(int ser_id, char *message, int len)
+socket_send(int ser_id, const unsigned char *message, int len)
 {
    Socket_Send_Msg *Msg = NULL;
    struct tcb *ptcb = get_tcb_by_identifier(ser_id);
-   if (rte_mempool_get(buffer_message_pool, &Msg) < 0) {
+   if (rte_mempool_get(buffer_message_pool,(void **) &Msg) < 0) {
        printf ("Failed to get message buffer\n");
 /// / put assert ;
    }
@@ -129,6 +134,7 @@ socket_send(int ser_id, char *message, int len)
    printf("****** Enqued for  %s and len %d and identifier %d\n",(char *)Msg->m_Data, Msg->m_Len, Msg->m_Identifier);
   // sendtcppacket(ptcb, mbuf, message, len);
   // ptcb->send_data(message, len); 
+   return 0;
 }
 
 extern struct tcb *tcbs[];
@@ -138,7 +144,7 @@ int
 check_socket_out_queue(void)
 {
    Socket_Send_Msg *msg;
-   int i;
+   uint32_t i;
    unsigned char message[1500];
    struct tcb *ptcb = NULL;
    struct tcb *temp = NULL;
@@ -153,7 +159,7 @@ check_socket_out_queue(void)
       if(ptcb == NULL) {
          continue;
       }
-      int num = rte_ring_dequeue(ptcb->tcb_socket_ring_recv, &msg);
+      int num = rte_ring_dequeue(ptcb->tcb_socket_ring_recv, (void **)&msg);
       if(num < 0) {
          continue;
       }
@@ -242,7 +248,7 @@ int socket_connect(int identifier, struct sock_addr *client_addr)
    printf("opening connection connect call\n");
    Socket_Send_Msg *Msg = NULL;
    struct tcb *ptcb = get_tcb_by_identifier(identifier);
-   if (rte_mempool_get(buffer_message_pool, &Msg) < 0) {
+   if (rte_mempool_get(buffer_message_pool,(void **) &Msg) < 0) {
        printf ("Failed to get message buffer\n");
 /// / put assert ;
    }
@@ -275,7 +281,7 @@ int socket_read_nonblock(int ser_id, unsigned char *buffer)
       usleep(5);
       continue;
    }
-   printf("Received %s and len %d\n",(char *)msg, strlen(msg));
+//   printf("Received %s and len %d\n",(char *)msg, strlen(msg));
    memcpy(buffer, msg, strlen(msg));
    rte_mempool_put(buffer_message_pool, msg);
  
@@ -288,7 +294,7 @@ socket_close(int identifier)
    printf("closing tcb\n");
    Socket_Send_Msg *Msg = NULL;
    struct tcb *ptcb = get_tcb_by_identifier(identifier);
-   if (rte_mempool_get(buffer_message_pool, &Msg) < 0) {
+   if (rte_mempool_get(buffer_message_pool, (void **)&Msg) < 0) {
        printf ("Failed to get message buffer\n");
 /// / put assert ;
    }

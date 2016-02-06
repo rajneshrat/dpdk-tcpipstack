@@ -11,6 +11,7 @@
 #include "tcp_common.h"
 #include <pthread.h>
 #include "tcp_windows.h"
+#include "socket_interface.h"
 
 #define TOTAL_TCBS 10
 pthread_mutex_t tcb_alloc_mutex;
@@ -93,7 +94,6 @@ struct tcb* get_tcb_by_identifier(int identifier)
 {
    int i;
    //uint64_t value = 0x7fbe80008c0;
-   uint64_t value = 0x7f780008c0;
    struct tcb *ptcb = NULL;
    for(i=0; i<Ntcb; i++) {  // change it to hash type later
       ptcb = tcbs[i];
@@ -105,6 +105,7 @@ struct tcb* get_tcb_by_identifier(int identifier)
          return ptcb;
       }
    }
+   return NULL;
 }
 
 struct tcb* findtcb(struct tcp_hdr *ptcphdr, struct ipv4_hdr *hdr)
@@ -164,10 +165,14 @@ int remove_tcb(int identifier)
          tcbs[i] = NULL;
       }
    }
+   return 0;
 }
 
 int send_data(char *message, int len)
 {
 //   sendtcppacket(ptcb, mbuf, message, len);
+   (void) message;
+   (void) len;
+   return 0;
 }
 

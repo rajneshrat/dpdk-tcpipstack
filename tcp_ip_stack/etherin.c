@@ -3,9 +3,10 @@
 #include <rte_ether.h>
 #include <assert.h>
 #include "logger.h"
-
+#include "etherin.h"
 #include <stdio.h>
 #include "ip.h"
+#include "arp.h"
 
 int
 ether_in(struct rte_mbuf *mbuf)
@@ -24,6 +25,7 @@ ether_in(struct rte_mbuf *mbuf)
          break;
       case ETHER_TYPE_IPv4 : 
          logger(LOG_IP, NORMAL, "seen ip packet\n");
+         printf ( "Seen ip packet\n");
       //printf("IP packet\n");
          ip_in(mbuf);
          break; 
@@ -31,5 +33,6 @@ ether_in(struct rte_mbuf *mbuf)
 			rte_pktmbuf_free(mbuf);
    }
    rte_pktmbuf_free(mbuf); // don't free here, future work.
+   return 0;
 }
 

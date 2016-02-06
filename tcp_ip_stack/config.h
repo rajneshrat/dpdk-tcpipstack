@@ -6,4 +6,4 @@
 
 // IP of the interface 1, port 0
 
-#define IP_INTERFACE_1 "192.168.78.5"
+#define IP_INTERFACE_1 "192.168.78.2"

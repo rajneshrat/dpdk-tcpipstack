@@ -10,8 +10,8 @@ void InitLogger(void)
 {
    LogFeature = calloc(LOG_TOTAL_FEATURE, sizeof(struct LoggerFeature));
    EnableTrace(LOG_ARP, ALL);
-   //EnableTrace(IP, ALL);
-   //EnableTrace(TCP, ALL);
+   EnableTrace(LOG_IP, ALL);
+   EnableTrace(LOG_TCP, ALL);
    //EnableTrace(SOCKET, ALL);
 }
 

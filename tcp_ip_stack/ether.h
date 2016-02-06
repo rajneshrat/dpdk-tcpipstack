@@ -17,6 +17,7 @@ uint32_t GetIntAddFromChar(unsigned char *address, uint8_t order);
 uint8_t GetInterfaceMac(uint8_t InterfaceNumber, uint8_t *mac);
 void AddInterface(struct Interface *Iface);
 void SetInterfaceHW(uint8_t *MacAddr, uint8_t interface);
+void InitInterface(struct Interface *IfList[], unsigned int Count);
 
 extern struct Interface *InterfaceList;
 #endif

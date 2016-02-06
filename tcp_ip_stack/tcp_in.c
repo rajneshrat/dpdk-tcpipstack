@@ -12,6 +12,7 @@
 #include "tcp.h"
 #include "tcp_states.h"
 #include "main.h"
+#include "ip.h"
 
 int tcpchecksumerror;
 int tcpnopcb;
@@ -19,8 +20,13 @@ int tcpnopcb;
 
 int tcpok(struct tcb *ptcb, struct rte_mbuf *mbuf)
 {
+   ptcb = NULL;
+   mbuf = NULL;
+   (void ) mbuf;
+   (void) ptcb;
    return 1;
 }
+
 
 void send_reset(struct ipv4_hdr *ip_hdr, struct tcp_hdr *t_hdr)
 {
@@ -76,8 +82,8 @@ int tcp_in(struct rte_mbuf *mbuf)
       ++tcpchecksumerror;
       return -1;
    }  
-   struct ipv4_hdr *hdr =  (struct ipv4_hdr *)(rte_pktmbuf_mtod(mbuf, unsigned char *) +
-                            sizeof(struct ether_hdr));
+   struct ipv4_hdr *hdr =  (struct ipv4_hdr *)((rte_pktmbuf_mtod(mbuf, unsigned char *) +
+                            sizeof(struct ether_hdr)));
    struct tcp_hdr *ptcphdr = (struct tcp_hdr *) ( rte_pktmbuf_mtod(mbuf, unsigned char *) + 
          sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr)); 
    ptcb = findtcb(ptcphdr, hdr);

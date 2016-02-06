@@ -5,6 +5,8 @@
 #include <rte_ip.h>
 #include "etherout.h"
 #include <stdio.h>
+#include "arp.h"
+#include "main.h"
 
 static const char *_MSG_POOL = "MSG_POOL_IP_ETHER_PACKETS";
 static const unsigned int pool_size = 1024;
@@ -14,10 +16,10 @@ struct rte_ring *ip_to_ether_ring_send; // this ring will work only under same p
 struct rte_ring *ip_to_ether_ring_recv;
 struct rte_ring *ether_to_ip_ring_send;
 struct rte_ring *ether_to_ip_ring_recv;
-char * IP_ETHER_RING_NAME = "IP_ETHER_RING";
-char * ETHER_IP_RING_NAME = "ETHER_IP_RING";
+const char * IP_ETHER_RING_NAME = "IP_ETHER_RING";
+const char * ETHER_IP_RING_NAME = "ETHER_IP_RING";
 
-void InitIpToEtherRing()
+void InitIpToEtherRing(void )
 {
  //  socket_tcb_ring_send = rte_ring_create(TCB_TO_SOCKET, socket_tcb_ring_size, SOCKET_ID_ANY, 0);
    int buffer_size = sizeof(struct rte_mbuf *);
@@ -65,6 +67,7 @@ int
 InitEtherInterface(void)
 {
    InitIpToEtherRing();
+   return 0;
 }
 
 int
@@ -87,13 +90,16 @@ ether_out(unsigned char *dst_mac, char *src_mac, uint16_t ether_type, struct rte
 //   }
 // fix this this should be automatically detect the port id.
    send_packet_out(mbuf, 0);
+   (void) src_mac; // jusat to avoid warning
+   src_mac = NULL;
+   return 0;
 }
 
 int
 EnqueueMBuf(struct rte_mbuf *mbuf)
 {
    struct rte_mbuf **Msg;
-   if (rte_mempool_get(buffer_message_pool, &Msg) < 0) {
+   if (rte_mempool_get(buffer_message_pool, (void **)&Msg) < 0) {
        printf ("Failed to get rte_mbuf message buffer\n");
 /// / put assert ;
       return -1;
@@ -104,8 +110,9 @@ EnqueueMBuf(struct rte_mbuf *mbuf)
       rte_mempool_put(buffer_message_pool, Msg);
    }
    else {
-     printf("mbuf enqueue = %p\n", mbuf);
+      printf("mbuf enqueue = %p\n", mbuf);
    }
+   return 0;
 }
 
 int
@@ -114,7 +121,7 @@ CheckEtherOutRing(void)
    struct rte_mbuf **Msg, *mbuf;
    int mac_status = 0;
 
-   int num = rte_ring_dequeue(ip_to_ether_ring_recv, &Msg);
+   int num = rte_ring_dequeue(ip_to_ether_ring_recv, (void **)&Msg);
    if(num < 0) {
       return 0;
    }
@@ -132,5 +139,6 @@ CheckEtherOutRing(void)
       printf("mac not found pushing packet back to queue.\n");
       // put this mbuf bak in queue.
    }
+   return 0;
 }
 

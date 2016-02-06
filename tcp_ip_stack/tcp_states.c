@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include "tcp_tcb.h"
 #include "tcp.h"
+#include "tcp_out.h"
 
 
 int
@@ -14,6 +15,7 @@ tcp_syn_sent(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, 
 {
   // //printf("tcp_closed called\n");
 // release semphone waiting at connect.
+   (void) mbuf;
    ptcb->state = TCP_ESTABLISHED;
 //   ptcb->dport = ptcb->dport;
    ptcb->dport = htons(ptcphdr->dst_port);
@@ -39,6 +41,8 @@ int
 tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {
    printf("tcp syn recv state\n");
+   (void) iphdr;
+   (void) mbuf;
    if((ptcphdr->tcp_flags & SYN) || (ptcphdr->tcp_flags & FIN) ) {
       ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;  // this should add tcp len also. but not needed for syn-ack.
    }
@@ -66,7 +70,7 @@ tcp_established(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphd
    printf("ip len %d tcp len %d buf len %d\n", ntohs(iphdr->total_length), tcp_len, rte_pktmbuf_pkt_len(mbuf));
    printf("data len %d tcp message = %s\n",datalen, data_buffer);
    if(datalen) {
-      ptcb->read_buffer = (char *) malloc(datalen);
+      ptcb->read_buffer = (unsigned char *) malloc(datalen);
       ptcb->read_buffer_len = datalen;
       memcpy(ptcb->read_buffer, data_buffer, datalen); 
       PushData(ptcb->read_buffer, ptcphdr, datalen, ptcb);
@@ -94,6 +98,7 @@ int
 tcp_listen(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {
    struct tcb *new_ptcb = NULL;
+   (void) mbuf;
    new_ptcb = alloc_tcb(2000, 2000); 
    if(new_ptcb == NULL) {
       printf("Null tcb'\n");
@@ -127,7 +132,10 @@ tcp_closed(struct tcb *ptcb, struct tcp_hdr* tcphdr, struct ipv4_hdr *iphdr, str
 {
    remove_tcb(ptcb->identifier);
   // //printf("tcp_closed called\n");
-
+   (void) tcphdr;
+   (void) iphdr;
+   (void) mbuf;
+   return 0;
 }
 
 int
@@ -141,6 +149,10 @@ tcp_fin2(struct tcb *ptcb, struct tcp_hdr* tcphdr, struct ipv4_hdr *iphdr, struc
    else {
       ptcb->state = TCP_STATE_FIN_1;
    }
+   (void) mbuf;
+   (void) iphdr;
+   (void) tcphdr;
+   return 0;
 }
 
 int
@@ -153,6 +165,10 @@ tcp_fin1(struct tcb *ptcb, struct tcp_hdr* tcphdr, struct ipv4_hdr *iphdr, struc
    else {
       ptcb->state = TCP_FIN_2;
    }
+   (void) mbuf;
+   (void) iphdr;
+   (void) tcphdr;
+   return 0;
 }
       
   // //printf("tcp_closed called\n");

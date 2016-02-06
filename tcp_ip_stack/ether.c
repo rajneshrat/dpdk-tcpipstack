@@ -1,5 +1,8 @@
 #include "types.h"
+#include <string.h>
 #include "ether.h"
+#include "arp.h"
+#include "stdio.h"
 #include <rte_common.h>
 
 UINT TotalInterface = 0;
@@ -37,10 +40,10 @@ void SetInterfaceHW(uint8_t *MacAddr, uint8_t interface)
    }
 }
 
-void InitInterface(struct Interface *IfList[], UINT Count)
+void InitInterface(struct Interface *IfList[], unsigned int Count)
 {
    struct Interface *ptr = NULL;
-   int i = 0;
+   unsigned int i = 0;
    for(i=0; i<Count; i++) {
       ptr = malloc(sizeof(struct Interface));
       memcpy(ptr, IfList[i], sizeof(struct Interface));
@@ -61,7 +64,6 @@ void InitInterface(struct Interface *IfList[], UINT Count)
 void AddInterface(struct Interface *Iface)
 {
    struct Interface *ptr = NULL;
-   int i = 0;
       ptr = malloc(sizeof(struct Interface));
       memcpy(ptr, Iface, sizeof(struct Interface));
       ptr->Next = NULL;

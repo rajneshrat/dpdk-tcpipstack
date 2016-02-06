@@ -9,13 +9,16 @@
 #include "tcp_tcb.h"
 #include "arp.h"
 #include "tcp.h"
+#include "ip.h"
+#include "tcp_in.h"
+#include "etherout.h"
 
 int
 ip_in(struct rte_mbuf *mbuf)
 {
 	 struct ether_hdr *eth = rte_pktmbuf_mtod(mbuf, struct ether_hdr *);
-    struct ipv4_hdr *hdr =  (struct ipv4_hdr *)(rte_pktmbuf_mtod(mbuf, unsigned char *) +
-                            sizeof(struct ether_hdr));
+    struct ipv4_hdr *hdr =  (struct ipv4_hdr *)((rte_pktmbuf_mtod(mbuf, unsigned char *) +
+                            sizeof(struct ether_hdr)));
     unsigned char mac[6];
     print_arp_table();
     switch(hdr->next_proto_id) {
@@ -23,13 +26,13 @@ ip_in(struct rte_mbuf *mbuf)
         if(get_mac(ntohl(hdr->src_addr), mac) == 0) { // remove me, should be inside add_mac
             add_mac(ntohl(hdr->src_addr), eth->s_addr.addr_bytes);
         }
-        //printf("tcp packet\n");
+        printf("tcp packet\n");
         tcp_in(mbuf);
         break;
     default:
         break ;
     }
-
+   return 0;
 }
 // for time being using this for checksum, will change later
 uint16_t calculate_checksum(unsigned char *data, int len)
@@ -53,7 +56,6 @@ uint16_t calculate_checksum(unsigned char *data, int len)
 int
 ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf, struct tcp_hdr *ptcphdr, uint8_t data_len)
 {
-    unsigned char dest_mac[6];
     //printf("head room3 = %d\n", rte_pktmbuf_headroom(mbuf));
 //    struct tcp_hdr *ptcphdr =  rte_pktmbuf_mtod(mbuf, struct tcp_hdr *);  
     struct ipv4_hdr *hdr = (struct ipv4_hdr *)rte_pktmbuf_prepend (mbuf, sizeof(struct ipv4_hdr));
@@ -76,14 +78,14 @@ ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf, struct tcp_hdr *ptcphdr, uint8_t
    // //  hdr->total_length = htons(sizeof(struct ipv4_hdr) + sizeof(struct tcp_hdr) + 4);
         hdr->total_length = htons( 20 + tcp_len + data_len);// htons(sizeof(struct ipv4_hdr) + sizeof(struct tcp_hdr) + 4);
         hdr->packet_id = count++;
-        hdr->hdr_checksum = htons(calculate_checksum(hdr, sizeof(struct ipv4_hdr)));
+        hdr->hdr_checksum = htons(calculate_checksum((unsigned char *)hdr, sizeof(struct ipv4_hdr)));
     }
     pseudohdr->src_ip = hdr->src_addr;
     pseudohdr->dst_ip = hdr->dst_addr; 
     pseudohdr->reserved = 0; 
     pseudohdr->protocol = (IPPROTO_TCP);
     pseudohdr->len = htons(tcp_len + data_len); 
-    char *temp = malloc(sizeof(struct pseudo_tcp_hdr) + tcp_len + data_len); 
+    unsigned char *temp = malloc(sizeof(struct pseudo_tcp_hdr) + tcp_len + data_len); 
    // memset(temp, 0, sizeof(struct pseudo_tcp_hdr) + 20);
     memcpy(temp, pseudohdr, sizeof(struct pseudo_tcp_hdr));
     memcpy(temp + sizeof(struct pseudo_tcp_hdr), ptcphdr, tcp_len + data_len);
@@ -93,4 +95,5 @@ ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf, struct tcp_hdr *ptcphdr, uint8_t
   //  struct rte_mbuf **pbuf;
 //    *pbuf = mbuf;
     //ether_out(dest_mac, NULL, ETHER_TYPE_IPv4, mbuf);
+   return 0;
 }
