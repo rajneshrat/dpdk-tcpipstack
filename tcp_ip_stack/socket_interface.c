@@ -8,6 +8,7 @@
 #include "main.h"
 #include "tcp_out.h"
 #include <unistd.h>
+#include "tcp.h"
 
 enum Msg_Type {
    SOCKET_CLOSE,
@@ -193,6 +194,7 @@ check_socket_out_queue(void)
             exit(0);
       // put assert
          }
+         ptcb->tcp_flags = TCP_FLAG_ACK; 
          sendtcpdata(ptcb, mbuf, message, msg->m_Len);
       }
       rte_mempool_put(buffer_message_pool, msg);

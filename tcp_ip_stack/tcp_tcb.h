@@ -15,6 +15,7 @@ struct tcb
    uint16_t identifier;
    int dport;
    int sport;
+   uint8_t tcp_flags;
    uint32_t ack;
    uint32_t next_seq;
    int WaitingOnAccept;

@@ -55,7 +55,7 @@ void send_reset(struct ipv4_hdr *ip_hdr, struct tcp_hdr *t_hdr)
    ptcphdr->dst_port = t_hdr->src_port;
    ptcphdr->sent_seq = t_hdr->recv_ack;
    ptcphdr->recv_ack = 0;
-   ptcphdr->tcp_flags =  RST;
+   ptcphdr->tcp_flags =  TCP_FLAG_RST;
    ptcphdr->rx_win = 12000;
    ptcphdr->tcp_urp = 0; 
    
@@ -94,13 +94,13 @@ int tcp_in(struct rte_mbuf *mbuf)
       send_reset(hdr, ptcphdr);
       return -1;
    }
-   if((ptcb->state == LISTENING) && !(ptcphdr->tcp_flags & SYN)) {
+   if((ptcb->state == LISTENING) && !(ptcphdr->tcp_flags & TCP_FLAG_SYN)) {
       rte_pktmbuf_free(mbuf);
       send_reset(hdr, ptcphdr);
       printf("Ignoring non syn flag for listen tcb\n");
       return 0;
    }
-   if((ptcphdr->tcp_flags & FIN)) {
+   if((ptcphdr->tcp_flags & TCP_FLAG_FIN)) {
     //  sendfin(ptcb);  // future, remove it from here.
    }
   

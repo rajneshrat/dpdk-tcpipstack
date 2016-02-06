@@ -10,14 +10,14 @@
 
 
 enum TCP_FLAGS {
-   CWR = 0x80,
-   ECE = 0x40,
-   URG = 0x20,
-   ACK = 0x10,
-   PSH = 0x08,
-   RST = 0x04,
-   SYN = 0x02,
-   FIN = 0x01,
+   TCP_FLAG_CWR = 0x80,
+   TCP_FLAG_ECE = 0x40,
+   TCP_FLAG_URG = 0x20,
+   TCP_FLAG_ACK = 0x10,
+   TCP_FLAG_PSH = 0x08,
+   TCP_FLAG_RST = 0x04,
+   TCP_FLAG_SYN = 0x02,
+   TCP_FLAG_FIN = 0x01,
 }; 
 
 struct pseudo_tcp_hdr {

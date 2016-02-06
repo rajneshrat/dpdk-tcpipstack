@@ -75,10 +75,12 @@ void sendtcpdata(struct tcb *ptcb, struct rte_mbuf *mbuf, unsigned char *data, i
    ptcb->next_seq += data_len;
    ptcphdr->recv_ack = htonl(ptcb->ack);
    ptcphdr->data_off = tcp_len;
-   ptcphdr->tcp_flags =  ACK;
+   ptcphdr->tcp_flags =  ptcb->tcp_flags;
    ptcphdr->rx_win = 12000;
    ptcphdr->cksum = 0x0000;
    ptcphdr->tcp_urp = 0; 
+
+   ptcb->tcp_flags = 0; //reset the flags as we have sent them in packet now.
    //mbuf->ol_flags |=  PKT_TX_IP_CKSUM; // someday will calclate checkum here only.
    
  //  printf(" null\n");
@@ -86,7 +88,7 @@ void sendtcpdata(struct tcb *ptcb, struct rte_mbuf *mbuf, unsigned char *data, i
 printf("ok sending tcp data\n");
    ip_out(ptcb, mbuf, ptcphdr, data_len); 
 }
-
+/*
 void sendtcppacket(struct tcb *ptcb, struct rte_mbuf *mbuf, unsigned char *data, int len)
 {
    //uint8_t tcp_len = 0x50 + add_mss_option(mbuf, 1300);// + add_winscale_option(mbuf, 7);
@@ -126,6 +128,7 @@ void sendtcppacket(struct tcb *ptcb, struct rte_mbuf *mbuf, unsigned char *data,
    ip_out(ptcb, mbuf, ptcphdr, data_len); 
 
 }
+*/
 
 void sendtcpack(struct tcb *ptcb, struct rte_mbuf *mbuf, unsigned char *data, int len)
 {
@@ -155,7 +158,7 @@ void sendtcpack(struct tcb *ptcb, struct rte_mbuf *mbuf, unsigned char *data, in
   // ptcb->next_seq ++;  // for syn 
    ptcphdr->recv_ack = htonl(ptcb->ack);
    ptcphdr->data_off = tcp_len;
-   ptcphdr->tcp_flags =  ACK;
+   ptcphdr->tcp_flags =  TCP_FLAG_ACK;
    ptcphdr->rx_win = 12000;
 //   ptcphdr->cksum = 0x0001;
    ptcphdr->tcp_urp = 0; 
@@ -185,7 +188,7 @@ void sendsyn(struct tcb *ptcb)
    ptcb->next_seq ++; // for fin
    ptcphdr->recv_ack = htonl(ptcb->ack);
    ptcphdr->data_off = tcp_len;
-   ptcphdr->tcp_flags =  SYN;
+   ptcphdr->tcp_flags =  TCP_FLAG_SYN;
    ptcphdr->rx_win = 12000;
 //   ptcphdr->cksum = 0x0001;
    ptcphdr->tcp_urp = 0; 
@@ -214,7 +217,7 @@ void sendfin(struct tcb *ptcb)
    ptcb->next_seq ++; // for fin
    ptcphdr->recv_ack = htonl(ptcb->ack);
    ptcphdr->data_off = tcp_len;
-   ptcphdr->tcp_flags =  FIN;
+   ptcphdr->tcp_flags =  TCP_FLAG_FIN;
    ptcphdr->rx_win = 12000;
 //   ptcphdr->cksum = 0x0001;
    ptcphdr->tcp_urp = 0; 
@@ -231,6 +234,7 @@ void sendack(struct tcb *ptcb)
    sendtcpack(ptcb, mbuf, NULL, 0);
 }
 
+/*
 void sendsynack(struct tcb *ptcb)
 {
    struct rte_mbuf *mbuf = get_mbuf();
@@ -238,4 +242,5 @@ void sendsynack(struct tcb *ptcb)
    //printf("head room = %d\n", rte_pktmbuf_headroom(mbuf));
   // rte_pktmbuf_adj(mbuf, sizeof(struct tcp_hdr) + sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr));
 }
+*/
 

@@ -8,6 +8,7 @@
 #include "tcp_tcb.h"
 #include "tcp.h"
 #include "tcp_out.h"
+#include "main.h"
 
 
 int
@@ -43,7 +44,7 @@ tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, s
    printf("tcp syn recv state\n");
    (void) iphdr;
    (void) mbuf;
-   if((ptcphdr->tcp_flags & SYN) || (ptcphdr->tcp_flags & FIN) ) {
+   if((ptcphdr->tcp_flags & TCP_FLAG_SYN) || (ptcphdr->tcp_flags & TCP_FLAG_FIN) ) {
       ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;  // this should add tcp len also. but not needed for syn-ack.
    }
    ptcb->state = TCP_ESTABLISHED;
@@ -55,7 +56,7 @@ int
 tcp_established(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {
    printf("tcp established state\n");
-   if(ptcphdr->tcp_flags & FIN) {
+   if(ptcphdr->tcp_flags & TCP_FLAG_FIN) {
       ptcb->state = TCP_FIN_2;
   //change state to tcpfin1 
    }
@@ -84,7 +85,7 @@ printf("signaling accept mutex.\n");
     //  free(ptcb->read_buffer);
    }
    else {
-      if((ptcphdr->tcp_flags & SYN) || (ptcphdr->tcp_flags & FIN) ) {
+      if((ptcphdr->tcp_flags & TCP_FLAG_SYN) || (ptcphdr->tcp_flags & TCP_FLAG_FIN) ) {
          printf("**********Increasing ack for syn or fin %u\n", ntohl(ptcphdr->sent_seq) + 1);
          ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;  // this should add tcp len also.
          sendack(ptcb);
@@ -123,10 +124,17 @@ printf("signaling accept mutex.\n");
    pthread_mutex_unlock(&(ptcb->mutex));
    //printf("sending ack\n");
    //sendack(new_ptcb);
-   sendsynack(new_ptcb);
+   // fix me this sould be send packet normal api.
+   struct rte_mbuf *new_mbuf = get_mbuf();
+   new_ptcb->tcp_flags = TCP_FLAG_SYN | TCP_FLAG_ACK; 
+   // ** addtcpoptiosn.
+   //    // add tcpflags.
+   sendtcpdata(new_ptcb, new_mbuf, NULL, 0);
+   //sendsynack(new_ptcb);
    //sendsynack(ptcb);
    return 0;
 }
+
 int
 tcp_closed(struct tcb *ptcb, struct tcp_hdr* tcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {

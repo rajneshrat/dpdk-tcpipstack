@@ -135,7 +135,7 @@ int PushData(unsigned char *data, struct tcp_hdr* ptcphdr, uint16_t Length, stru
       return -1;
    }
    ptcb->ack = SequenceNumber + Length;
-   if(ptcphdr->tcp_flags & FIN || ptcphdr->tcp_flags & SYN) {
+   if(ptcphdr->tcp_flags & TCP_FLAG_FIN || ptcphdr->tcp_flags & TCP_FLAG_SYN) {
       ptcb->ack = ptcb->ack + 1;
    }
    printf("**** setting ack for %u\n", ptcb->ack); 
