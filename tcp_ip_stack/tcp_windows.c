@@ -1,6 +1,7 @@
 #include "tcp_windows.h"
 #include "tcp_tcb.h"
 #include "tcp.h"
+#include "logger.h"
 
 //static struct rte_ring *socket_tcb_ring_send;
 
@@ -26,54 +27,91 @@ void InitSocketTcbRing(void)
    }
 }
 
-
-int AdjustPair(ReceiveWindow *Window, uint32_t StartSeqNumber, uint16_t Length)
+int DeletePair(struct OutOfSeqPair  *Pair)
 {
-   struct SequenceLengthPair *Pair = Window->SeqPairs;
-   struct SequenceLengthPair *LastPair = NULL;
-   struct SequenceLengthPair *NextPair = NULL;
-   while(Pair && (Pair->SequenceNumber <= StartSeqNumber)) {
-      LastPair = Pair;
-      Pair = Pair->Next;
-   }
-   Pair = LastPair;
-   if(Pair && (Pair->SequenceNumber + Pair->Length) > StartSeqNumber) {  // if we fall inside existing pair
-      if(Pair->Length < (StartSeqNumber - Pair->SequenceNumber + Length)) { // do we need to increase length of existing pair
-         Pair->Length = Length + StartSeqNumber - Pair->SequenceNumber;
-      }
-   }
-   else { // create new pair
-      struct SequenceLengthPair *NewPair = malloc(sizeof (struct SequenceLengthPair));
-      NewPair->SequenceNumber = StartSeqNumber;
-      NewPair->Length = Length;
-      if(Pair) {
-         NewPair->Next = Pair->Next;
-         Pair->Next = NewPair;
-      }
-      else {
-         NewPair->Next = NULL;
-         Window->SeqPairs = NewPair;
-      }
-      Pair = NewPair;  // set pair as newpair to do adjustment as down.
-   }
-   NextPair = Pair->Next;
-   while(NextPair && ((Pair->SequenceNumber + Pair->Length) > NextPair->SequenceNumber)) { // after increasing length we may have overlaps next few existing pairs.
-      if((Pair->SequenceNumber + Pair->Length) < (NextPair->SequenceNumber + NextPair->Length)){ // do we need to adjust our pair length.
-         Pair->Length = NextPair->SequenceNumber - Pair->SequenceNumber + NextPair->Length; 
-      }
-      Pair->Next = NextPair->Next;
-      free(NextPair);
-      NextPair = Pair->Next;
-   }
+   logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "Deleting Seq Pair with Seq No. %u\n", Pair->SequenceNumber);
+   rte_pktmbuf_free(Pair->mbuf);
+   free(Pair);
    return 0;
 }
+
+uint32_t AdjustPair(ReceiveWindow *Window, uint32_t StartSeqNumber, uint16_t Length, struct rte_mbuf *mbuf, int TcpLen, uint8_t TcpFlags)
+{
+   struct OutOfSeqPair *Pair = Window->SeqPairs;
+   struct OutOfSeqPair *PrePair = NULL;
+   struct OutOfSeqPair *NextPair = NULL;
+   while(Pair && (Pair->SequenceNumber <= StartSeqNumber)) {
+      PrePair = Pair;
+      Pair = Pair->Next;
+      // get the pair whose next is more than this Seq no.
+   }
+   NextPair = Pair;
+   Pair = PrePair; // we will add new pair after this.
+   struct OutOfSeqPair *NewPair = malloc(sizeof (struct OutOfSeqPair));
+   NewPair->SequenceNumber = StartSeqNumber;
+   NewPair->Length = Length;
+   NewPair->mbuf = mbuf;
+   NewPair->TcpLen = TcpLen;
+   NewPair->HasFin = TcpFlags & TCP_FLAG_FIN;
+   NewPair->Next = NextPair;
+   if(Pair) {
+      Pair->Next = NewPair;
+   }
+   else {
+      Window->SeqPairs = NewPair;
+   }
+   logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "adding new seq pair with seq no %u length %u\n", StartSeqNumber, Length);
+// now delete extra pairs -
+   Pair = Window->SeqPairs;
+   NextPair = Pair->Next;
+   PrePair = NULL;
+   while(Pair && NextPair) {
+       assert(Pair->SequenceNumber < NextPair->SequenceNumber);
+       if(Pair->SequenceNumber == NextPair->SequenceNumber) {
+           // only one pair should exist now, and the one with more length.
+           if(Pair->Length >= NextPair->Length) {
+               Pair->Next = NextPair->Next;
+               DeletePair(NextPair);
+           }
+           else {
+                if(PrePair) {
+                    PrePair->Next = NextPair;
+                }
+                else {
+                    Window->SeqPairs = NextPair;
+                }
+                DeletePair(Pair);
+                Pair = NextPair; // set the current pair now, as all adjustment for next and pre will be done using it.
+           }
+       }
+       else {
+           // we need current Pair as it has somethig at starting but do we need its next also.
+           if((Pair->SequenceNumber + Pair->Length) >= (NextPair->SequenceNumber + NextPair->Length)) {
+               Pair->Next = NextPair->Next;
+               DeletePair(NextPair);
+           }
+       }
+       PrePair = Pair;
+       Pair = Pair->Next;
+       NextPair = Pair->Next;
+   }
+   Pair = Window->SeqPairs;
+   uint8_t FlagBit = 0;
+   if(Pair->HasFin != 0) {
+      FlagBit = 1;  //FIN has one len of data.
+   }
+   return (Pair->SequenceNumber + Pair->Length + FlagBit); // maximum contiuous data we have received.
+}
+
 static int PushDataInQueue(int identifier)
 {
    unsigned char Buffer[2000];
+   // check for buffer overflow.
    int len = 0;
    struct tcb *ptcb = get_tcb_by_identifier(identifier);
-   if((len = GetData(identifier, Buffer))) {
+   if((len = GetData(identifier, Buffer, 2000))) {
       void *msg = NULL;
+      printf("Pushing data of len %u to tcb %u\n", len, identifier);
       if (rte_mempool_get(buffer_message_pool, &msg) < 0) {
          printf ("Failed to get message buffer\n");
 /// / put assert ;
@@ -87,33 +125,44 @@ static int PushDataInQueue(int identifier)
    return 0;
 }
 
-int AddData(unsigned char *data, uint16_t Length, uint32_t SequenceNumber, ReceiveWindow *Window, int identifier)
-{
-   if(Window->StartSequenceNumber == 0) {
-      Window->StartSequenceNumber = SequenceNumber;
-   }
-   uint16_t CurrentPointer = (SequenceNumber - Window->StartSequenceNumber) % Window->MaxSize;
-   memcpy(Window->Data + CurrentPointer, data, Length);
-   printf("pushing data from index %d to length %d\n", CurrentPointer, Length);
-   PushDataInQueue(identifier);
-   return 0;
-}
-
-int GetData(int identifier, unsigned char *Buffer)
+int GetData(int identifier, unsigned char *Buffer, uint32_t len)
 {
    struct tcb *ptcb = get_tcb_by_identifier(identifier);
    if(ptcb == NULL) {
+      assert(0);
       return -1;
    }
    ReceiveWindow *Window = (ReceiveWindow *) ptcb->RecvWindow;
-   struct SequenceLengthPair *Pair = Window->SeqPairs;
+   if(Window == NULL) {
+      logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "no data to send no seq pair available for %u for current seq %u\n", identifier, Window->CurrentSequenceNumber);
+      return 0;
+   }
+      
+   assert(Window->CurrentSequenceNumber != 0); // this means it is not yet intialized.
+   struct OutOfSeqPair *Pair = Window->SeqPairs;
+   struct rte_mbuf *mbuf = Pair->mbuf;
+   logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "attempt to get data for tcb %u from seq no %u.\n", identifier, Window->CurrentSequenceNumber);
+   if(Pair)
+      logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "for tcb %u current seq no %u and first pair seq no %u.\n", identifier, Window->CurrentSequenceNumber, Pair->SequenceNumber);
    if(Pair) {
-      int index = (Pair->SequenceNumber - Window->StartSequenceNumber) % Window->MaxSize;
-      printf("copying data from index %d to length %d\n", index, Pair->Length);
-      memcpy(Buffer, Window->Data + index, Pair->Length);
-      Window->SeqPairs = Pair->Next;
-      free(Pair);
-      return Pair->Length;
+      if(Pair->SequenceNumber <= Window->CurrentSequenceNumber) {
+              // we have something to send to socket.
+         assert((Pair->SequenceNumber + Pair->Length) > Window->CurrentSequenceNumber); 
+         int tcp_len = Pair->TcpLen;
+         char *data =  (char *)(rte_pktmbuf_mtod(mbuf, unsigned char *) + 
+                        sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr) +  
+                            tcp_len);
+         int datalen = rte_pktmbuf_pkt_len(mbuf) - (sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr) + tcp_len);
+         assert(datalen == Pair->Length);
+         uint32_t offset = Window->CurrentSequenceNumber - Pair->SequenceNumber;
+         assert((Pair->Length-offset) < len);
+         memcpy(Buffer, data + offset, Pair->Length - offset); 
+         Window->SeqPairs = Pair->Next;
+         Window->CurrentSequenceNumber = Pair->SequenceNumber + Pair->Length;
+         int DataSent = Pair->Length - offset;
+         DeletePair(Pair);
+         return DataSent;
+      }
    }
    return 0;
 }
@@ -125,7 +174,7 @@ int SendAck(void)
 
 }
 
-int PushData(unsigned char *data, struct tcp_hdr* ptcphdr, uint16_t Length, struct tcb *ptcb)
+int PushData(struct rte_mbuf *mbuf, struct tcp_hdr* ptcphdr, uint16_t Length, struct tcb *ptcb)
 {
 // future add assert if SequenceNumber is 0.
    uint32_t SequenceNumber = ntohl(ptcphdr->sent_seq);
@@ -134,23 +183,19 @@ int PushData(unsigned char *data, struct tcp_hdr* ptcphdr, uint16_t Length, stru
       printf("WARNING :: Out of window data, dropping all\n");
       return -1;
    }
-   ptcb->ack = SequenceNumber + Length;
-   if(ptcphdr->tcp_flags & TCP_FLAG_FIN || ptcphdr->tcp_flags & TCP_FLAG_SYN) {
-      ptcb->ack = ptcb->ack + 1;
-   }
-   printf("**** setting ack for %u\n", ptcb->ack); 
-   sendack(ptcb);
-   AdjustPair(Window, SequenceNumber, Length);
-   struct SequenceLengthPair *Pair = Window->SeqPairs;
-   ptcb->ack = Pair->SequenceNumber + Pair->Length;
-   AddData(data, Length, SequenceNumber, Window, ptcb->identifier);
+   int tcp_len = (ptcphdr->data_off >> 4) * 4;
+   ptcb->ack = AdjustPair(Window, SequenceNumber, Length, mbuf, tcp_len, ptcphdr->tcp_flags);
+   PushDataInQueue(ptcb->identifier); // Push data from seq pair to socket queue.
    return 0;
-   // unlock the sem if socket waiting for it.
 }
 
 int FreeWindow(ReceiveWindow *Window)
 {
-   free(Window->Data);
+   struct OutOfSeqPair *Pair = Window->SeqPairs;
+   while(Pair) {
+      DeletePair(Pair);
+      Pair = Pair->Next;
+   }
    free(Window);
    return 0;
 }
@@ -161,7 +206,8 @@ ReceiveWindow *AllocWindow(int MaxSize, int CurrentSize)
    Window->MaxSize = MaxSize;
    Window->CurrentSize = CurrentSize;
    Window->StartSequenceNumber = 0;
+   Window->CurrentSequenceNumber = 0;
    Window->SeqPairs = NULL;
-   Window->Data = malloc(MaxSize);
+   //Window->Data = malloc(MaxSize);
    return Window;
 }

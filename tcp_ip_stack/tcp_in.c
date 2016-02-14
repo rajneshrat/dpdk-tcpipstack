@@ -106,8 +106,13 @@ int tcp_in(struct rte_mbuf *mbuf)
   
    printf("tcb identifier = %d\n", ptcb->identifier);
    if(tcpok(ptcb, mbuf)) {
+      ptcb->need_ack_now = 1; // we need to ack this later.
+      if(ntohl(ptcphdr->sent_seq) > ptcb->max_seq_received) {
+         ptcb->max_seq_received = ntohl(ptcphdr->sent_seq); 
+      }
       logger(LOG_TCP, NORMAL, "sending tcp packet\n");
       tcpswitch[ptcb->state](ptcb, ptcphdr, hdr, mbuf);
+      rte_pktmbuf_free(mbuf);
       //(tcpswitch[1])(ptcb, mbuf);
    }
    else {

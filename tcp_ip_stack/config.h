@@ -1,5 +1,5 @@
 // number of total netowrk ports. At present max supported is one only. Do not change this value.
-#define TOTAL_PORTS 1
+#define TOTAL_PORTS 2
 
 // ports currently in use. 0x3 menas port 0 and 1. Max implemented at present is 1.
 #define PORT_CONFIGURE 1 

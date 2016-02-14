@@ -162,6 +162,13 @@ check_socket_out_queue(void)
       }
       int num = rte_ring_dequeue(ptcb->tcb_socket_ring_recv, (void **)&msg);
       if(num < 0) {
+         if(ptcb->need_ack_now) {
+            printf("sending immidiate ack\n");
+            ptcb->tcp_flags = TCP_FLAG_ACK;
+            sendtcpdata(ptcb, NULL, 0);
+            ptcb->need_ack_now = 0;
+            // will use a saeparate api for ack later.
+         }
          continue;
       }
       if(msg->m_Msg_Type == SOCKET_CLOSE) {
@@ -171,7 +178,9 @@ check_socket_out_queue(void)
             exit(0);
       // put assert
          }
-         sendfin(ptcb);
+         ptcb->tcp_flags = TCP_FLAG_ACK | TCP_FLAG_FIN; // no problem in acking
+         ptcb->need_ack_now = 1;
+    //     sendfin(ptcb);
       }
       if(msg->m_Msg_Type == CONNECTION_OPEN) {
          temp = get_tcb_by_identifier(msg->m_Identifier);
@@ -187,7 +196,6 @@ check_socket_out_queue(void)
          printf("****** Received %s and len %d and identifier %d\n",(char *)msg->m_Data, msg->m_Len, msg->m_Identifier);
          memcpy(message, msg->m_Data, msg->m_Len);
      
-         struct rte_mbuf *mbuf = get_mbuf();
          temp = get_tcb_by_identifier(msg->m_Identifier);
          if(temp != ptcb) {
             printf ("Everything screewed at tcb'\n");
@@ -195,7 +203,7 @@ check_socket_out_queue(void)
       // put assert
          }
          ptcb->tcp_flags = TCP_FLAG_ACK; 
-         sendtcpdata(ptcb, mbuf, message, msg->m_Len);
+         sendtcpdata(ptcb, message, msg->m_Len);
       }
       rte_mempool_put(buffer_message_pool, msg);
    }

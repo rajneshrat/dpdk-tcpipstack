@@ -9,6 +9,7 @@ typedef enum {
    LOG_ARP,
    LOG_IP,
    LOG_TCP,
+   LOG_TCP_WINDOW,
    LOG_SOCKET,
    LOG_TCB,
    LOG_TOTAL_FEATURE,
@@ -18,6 +19,7 @@ typedef enum {
 typedef enum {
    CRITICAL,
    NORMAL,
+   LOG_LEVEL_NORMAL,
    ALL,
 }TRACE_LEVEL;
 

@@ -9,6 +9,7 @@
 #include "tcp.h"
 #include "tcp_out.h"
 #include "main.h"
+#include "logger.h"
 
 
 int
@@ -42,8 +43,13 @@ int
 tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {
    printf("tcp syn recv state\n");
+   int tcp_len = (ptcphdr->data_off >> 4) * 4;
+   int datalen = rte_pktmbuf_pkt_len(mbuf) - (sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr) + tcp_len);
    (void) iphdr;
    (void) mbuf;
+   if(datalen != 0) {
+       printf("seen data of len %d in handshake ack packet.\n", datalen);
+   }
    if((ptcphdr->tcp_flags & TCP_FLAG_SYN) || (ptcphdr->tcp_flags & TCP_FLAG_FIN) ) {
       ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;  // this should add tcp len also. but not needed for syn-ack.
    }
@@ -61,23 +67,24 @@ tcp_established(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphd
   //change state to tcpfin1 
    }
    int tcp_len = (ptcphdr->data_off >> 4) * 4;
+#if 0
    char *data =  (char *)(rte_pktmbuf_mtod(mbuf, unsigned char *) + 
                   sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr) +  
                             tcp_len);
+#endif
    int datalen = rte_pktmbuf_pkt_len(mbuf) - (sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr) + tcp_len);
 //iphdr->total_length;// - ptcphdr->data_off;
-   char *data_buffer = (char *) malloc(datalen);
-   memcpy(data_buffer, data, datalen);
+ //  char *data_buffer = (char *) malloc(datalen);
+ //  memcpy(data_buffer, data, datalen);
    printf("ip len %d tcp len %d buf len %d\n", ntohs(iphdr->total_length), tcp_len, rte_pktmbuf_pkt_len(mbuf));
-   printf("data len %d tcp message = %s\n",datalen, data_buffer);
    if(datalen) {
-      ptcb->read_buffer = (unsigned char *) malloc(datalen);
-      ptcb->read_buffer_len = datalen;
-      memcpy(ptcb->read_buffer, data_buffer, datalen); 
-      PushData(ptcb->read_buffer, ptcphdr, datalen, ptcb);
+     // ptcb->read_buffer = (unsigned char *) malloc(datalen);
+     // ptcb->read_buffer_len = datalen;
+      //memcpy(ptcb->read_buffer, data_buffer, datalen); 
+      PushData(mbuf, ptcphdr, datalen, ptcb);
       pthread_mutex_lock(&(ptcb->mutex));
       if(ptcb->WaitingOnRead) {
-printf("signaling accept mutex.\n");
+         printf("signaling accept mutex.\n");
          pthread_cond_signal(&(ptcb->condAccept));
          ptcb->WaitingOnRead = 0;
       }
@@ -85,10 +92,10 @@ printf("signaling accept mutex.\n");
     //  free(ptcb->read_buffer);
    }
    else {
-      if((ptcphdr->tcp_flags & TCP_FLAG_SYN) || (ptcphdr->tcp_flags & TCP_FLAG_FIN) ) {
+      if(ptcphdr->tcp_flags & TCP_FLAG_FIN) {
          printf("**********Increasing ack for syn or fin %u\n", ntohl(ptcphdr->sent_seq) + 1);
-         ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;  // this should add tcp len also.
-         sendack(ptcb);
+      //   ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;  // this should add tcp len also.
+       //  sendack(ptcb);
       }
    }
 // also increase ack for data. future work.
@@ -108,6 +115,8 @@ tcp_listen(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, st
    printf("Tcp listen state\n");
 //   new_ptcb->identifier = 10;  identifier will be given by alloc.
    new_ptcb->state = SYN_RECV;
+   new_ptcb->RecvWindow->CurrentSequenceNumber = ntohl(ptcphdr->sent_seq) + 1;
+   logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL,  "Setting the CurrentSequenceNumber for ptcb %u to %u\n", ptcb->identifier, new_ptcb->RecvWindow->CurrentSequenceNumber);
    new_ptcb->dport = ptcb->dport;
    new_ptcb->sport = htons(ptcphdr->src_port);
    new_ptcb->ipv4_dst = ptcb->ipv4_dst;
@@ -119,17 +128,16 @@ tcp_listen(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, st
    // set ips.
    ptcb->newpTcbOnAccept = new_ptcb;
    pthread_mutex_lock(&(ptcb->mutex));
-printf("signaling accept mutex.\n");
+   printf("signaling accept mutex.\n");
    pthread_cond_signal(&(ptcb->condAccept));
    pthread_mutex_unlock(&(ptcb->mutex));
    //printf("sending ack\n");
    //sendack(new_ptcb);
-   // fix me this sould be send packet normal api.
-   struct rte_mbuf *new_mbuf = get_mbuf();
    new_ptcb->tcp_flags = TCP_FLAG_SYN | TCP_FLAG_ACK; 
    // ** addtcpoptiosn.
    //    // add tcpflags.
-   sendtcpdata(new_ptcb, new_mbuf, NULL, 0);
+   printf("Next seq number is %u flags %u\n", new_ptcb->next_seq, new_ptcb->tcp_flags);
+   sendtcpdata(new_ptcb,  NULL, 0);
    //sendsynack(new_ptcb);
    //sendsynack(ptcb);
    return 0;
@@ -150,7 +158,7 @@ int
 tcp_fin2(struct tcb *ptcb, struct tcp_hdr* tcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {
    printf("In tcp fin state.\n");
-     sendfin(ptcb);  // future, remove it from here.
+     //sendfin(ptcb);  // future, remove it from here.
    if(ptcb->state == TCP_FIN_2) {
       ptcb->state = TCP_STATE_CLOSED;
    }

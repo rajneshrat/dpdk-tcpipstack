@@ -50,9 +50,10 @@ uint8_t add_timestamp_option(struct rte_mbuf *mbuf, uint32_t value, uint32_t ech
    return 10;
 }
 
-void sendtcpdata(struct tcb *ptcb, struct rte_mbuf *mbuf, unsigned char *data, int len)
+void sendtcpdata(struct tcb *ptcb, unsigned char *data, int len)
 {
    //uint8_t tcp_len = 0x50 + add_mss_option(mbuf, 1300);// + add_winscale_option(mbuf, 7);
+   struct rte_mbuf *mbuf = get_mbuf(); // remove mbuf from parameters.
    uint8_t data_len = add_tcp_data(mbuf, data, len);
    uint8_t option_len = 0;//add_winscale_option(mbuf, 7) + add_mss_option(mbuf, 1300) + add_timestamp_option(mbuf, 203032, 0);
    uint8_t tcp_len = 20 + option_len;
@@ -73,6 +74,11 @@ void sendtcpdata(struct tcb *ptcb, struct rte_mbuf *mbuf, unsigned char *data, i
    ptcphdr->dst_port = htons(ptcb->sport);
    ptcphdr->sent_seq = htonl(ptcb->next_seq);
    ptcb->next_seq += data_len;
+   if(((ptcb->tcp_flags & TCP_FLAG_SYN) == TCP_FLAG_SYN) || ((ptcb->tcp_flags & TCP_FLAG_FIN) == TCP_FLAG_FIN)) {
+      printf("Increasing seq number by one for flag syn or fin\n");
+      ptcb->next_seq += 1;
+   }
+   printf("Next seq number is %u flags %u\n", ptcb->next_seq, ptcb->tcp_flags);
    ptcphdr->recv_ack = htonl(ptcb->ack);
    ptcphdr->data_off = tcp_len;
    ptcphdr->tcp_flags =  ptcb->tcp_flags;
@@ -199,6 +205,7 @@ void sendsyn(struct tcb *ptcb)
    ip_out(ptcb, mbuf, ptcphdr, 0); 
 }
 
+// remove this api. not used now
 void sendfin(struct tcb *ptcb)
 {
    struct rte_mbuf *mbuf = get_mbuf();
@@ -217,7 +224,7 @@ void sendfin(struct tcb *ptcb)
    ptcb->next_seq ++; // for fin
    ptcphdr->recv_ack = htonl(ptcb->ack);
    ptcphdr->data_off = tcp_len;
-   ptcphdr->tcp_flags =  TCP_FLAG_FIN;
+   ptcphdr->tcp_flags =  ptcb->tcp_flags | TCP_FLAG_FIN;
    ptcphdr->rx_win = 12000;
 //   ptcphdr->cksum = 0x0001;
    ptcphdr->tcp_urp = 0; 

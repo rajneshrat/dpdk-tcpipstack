@@ -45,6 +45,7 @@ struct tcb* alloc_tcb(uint16_t MaxWindSize, uint16_t CurrentWindSize)
    printf("Allocated a new tcb %p\n", ptcb);
    memset(ptcb, 0, sizeof(struct tcb));
    ptcb->identifier = IdentifierCount++;
+   ptcb->need_ack_now = 0;
    sprintf(ptcb->TCB_TO_SOCKET_RING_NAME,"TtoS%d", ptcb->identifier);
    sprintf(ptcb->SOCKET_TO_TCB_RING_NAME,"StoT%d", ptcb->identifier);
 // assert if size crosses of buffer ring name.

@@ -16,6 +16,8 @@ struct tcb
    int dport;
    int sport;
    uint8_t tcp_flags;
+   uint8_t need_ack_now;
+   uint32_t max_seq_received;
    uint32_t ack;
    uint32_t next_seq;
    int WaitingOnAccept;
