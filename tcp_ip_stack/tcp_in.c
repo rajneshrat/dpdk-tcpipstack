@@ -112,7 +112,8 @@ int tcp_in(struct rte_mbuf *mbuf)
       }
       logger(LOG_TCP, NORMAL, "sending tcp packet\n");
       tcpswitch[ptcb->state](ptcb, ptcphdr, hdr, mbuf);
-      rte_pktmbuf_free(mbuf);
+         //rte_pktmbuf_free(mbuf) ;// higher layer let decide this
+      // need to fix check fro
       //(tcpswitch[1])(ptcb, mbuf);
    }
    else {

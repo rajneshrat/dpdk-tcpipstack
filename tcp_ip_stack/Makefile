@@ -43,10 +43,10 @@ include $(RTE_SDK)/mk/rte.vars.mk
 APP = tcp_stack
 
 # all source are stored in SRCS-y
-SRCS-y := tcp_windows.c cli_server.c logger.c main.c arp.c etherin.c etherout.c ip.c tcp_in.c tcp_tcb.c tcp_states.c socket_interface.c socket_tester.c tcp_out.c ether.c 
+SRCS-y := timer.c tcp_windows.c cli_server.c logger.c main.c  etherin.c etherout.c ip.c tcp_in.c tcp_tcb.c tcp_out.c tcp_states.c socket_interface.c socket_tester.c ether.c arp.c
 
 CFLAGS += -O0
 CFLAGS += -g
-#CFLAGS += $(WERROR_FLAGS)
+CFLAGS += $(WERROR_FLAGS)
 
 include $(RTE_SDK)/mk/rte.extapp.mk
