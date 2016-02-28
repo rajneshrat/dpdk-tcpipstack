@@ -17,6 +17,8 @@ tcp_syn_sent(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, 
 {
   // //printf("tcp_closed called\n");
 // release semphone waiting at connect.
+// we will come here only when we received syn-ack for our syn.
+   logger(LOG_TCP, LOG_LEVEL_NORMAL, "In tcp syn sent state for tcb %u.\n", ptcb->identifier);
    (void) mbuf;
    ptcb->state = TCP_ESTABLISHED;
 //   ptcb->dport = ptcb->dport;
@@ -34,7 +36,7 @@ tcp_syn_sent(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, 
    pthread_mutex_unlock(&(ptcb->mutex));
    //printf("sending ack\n");
    //sendack(new_ptcb);
-   sendack(ptcb);
+   sendack(ptcb); // this should not be here, use senddata api only but with 0 data.
    //sendsynack(ptcb);
    return 0;
 
@@ -42,13 +44,15 @@ tcp_syn_sent(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, 
 int
 tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {
+   logger(LOG_TCP, LOG_LEVEL_NORMAL, "In tcp syn rcv state for tcb %u.\n", ptcb->identifier);
    printf("tcp syn recv state\n");
    int tcp_len = (ptcphdr->data_off >> 4) * 4;
    int datalen = rte_pktmbuf_pkt_len(mbuf) - (sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr) + tcp_len);
    (void) iphdr;
    (void) mbuf;
    if(datalen != 0) {
-       printf("seen data of len %d in handshake ack packet.\n", datalen);
+       logger(LOG_TCP, LOG_LEVEL_CRITICAL, "seen data of len %d in handshake ack packet for tcb %u.\n", datalen, ptcb->identifier);
+       ptcb->need_ack_now = 1; // we need to ack this later.
    }
    if((ptcphdr->tcp_flags & TCP_FLAG_SYN) || (ptcphdr->tcp_flags & TCP_FLAG_FIN) ) {
       ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;  // this should add tcp len also. but not needed for syn-ack.
@@ -61,8 +65,10 @@ tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, s
 int
 tcp_established(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {
+   logger(LOG_TCP, LOG_LEVEL_NORMAL, "In tcp established state for tcb %u.\n", ptcb->identifier);
    printf("tcp established state\n");
    if(ptcphdr->tcp_flags & TCP_FLAG_FIN) {
+      ptcb->need_ack_now = 1; // we need to ack this later.
       ptcb->state = TCP_FIN_2;
   //change state to tcpfin1 
    }
@@ -76,8 +82,9 @@ tcp_established(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphd
 //iphdr->total_length;// - ptcphdr->data_off;
  //  char *data_buffer = (char *) malloc(datalen);
  //  memcpy(data_buffer, data, datalen);
-   printf("ip len %d tcp len %d buf len %d\n", ntohs(iphdr->total_length), tcp_len, rte_pktmbuf_pkt_len(mbuf));
+   logger(LOG_TCP, LOG_LEVEL_NORMAL, "ip len %d tcp len %d buf len %d data len %u for tcb %u\n", ntohs(iphdr->total_length), tcp_len, rte_pktmbuf_pkt_len(mbuf), datalen, ptcb->identifier);
    if(datalen) {
+      ptcb->need_ack_now = 1; // we need to ack this data, remember it.
      // ptcb->read_buffer = (unsigned char *) malloc(datalen);
      // ptcb->read_buffer_len = datalen;
       //memcpy(ptcb->read_buffer, data_buffer, datalen); 
@@ -93,7 +100,7 @@ tcp_established(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphd
    }
    else {
       if(ptcphdr->tcp_flags & TCP_FLAG_FIN) {
-         printf("**********Increasing ack for syn or fin %u\n", ntohl(ptcphdr->sent_seq) + 1);
+         logger(LOG_TCP, LOG_LEVEL_NORMAL, "**********Increasing ack for syn or fin  to %u for tcb %u\n", ntohl(ptcphdr->sent_seq) + 1, ptcb->identifier);
       //   ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;  // this should add tcp len also.
        //  sendack(ptcb);
       }
@@ -105,6 +112,7 @@ tcp_established(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphd
 int
 tcp_listen(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {
+   logger(LOG_TCP, LOG_LEVEL_NORMAL, "In tcp listen state for tcb %u.\n", ptcb->identifier);
    struct tcb *new_ptcb = NULL;
    (void) mbuf;
    new_ptcb = alloc_tcb(2000, 2000); 
@@ -128,7 +136,7 @@ tcp_listen(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, st
    // set ips.
    ptcb->newpTcbOnAccept = new_ptcb;
    pthread_mutex_lock(&(ptcb->mutex));
-   printf("signaling accept mutex.\n");
+   logger(LOG_TCP, LOG_LEVEL_NORMAL, "signaling accept mutex for tcb %u.\n", ptcb->identifier);
    pthread_cond_signal(&(ptcb->condAccept));
    pthread_mutex_unlock(&(ptcb->mutex));
    //printf("sending ack\n");
@@ -146,6 +154,7 @@ tcp_listen(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, st
 int
 tcp_closed(struct tcb *ptcb, struct tcp_hdr* tcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {
+   logger(LOG_TCP, LOG_LEVEL_NORMAL, "In tcp closed state for tcb %u.\n", ptcb->identifier);
    remove_tcb(ptcb->identifier);
   // //printf("tcp_closed called\n");
    (void) tcphdr;
@@ -158,6 +167,7 @@ int
 tcp_fin2(struct tcb *ptcb, struct tcp_hdr* tcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {
    printf("In tcp fin state.\n");
+   logger(LOG_TCP, LOG_LEVEL_NORMAL, "In tcp fin2 state for tcb %u.\n", ptcb->identifier);
      //sendfin(ptcb);  // future, remove it from here.
    if(ptcb->state == TCP_FIN_2) {
       ptcb->state = TCP_STATE_CLOSED;
@@ -174,7 +184,7 @@ tcp_fin2(struct tcb *ptcb, struct tcp_hdr* tcphdr, struct ipv4_hdr *iphdr, struc
 int
 tcp_fin1(struct tcb *ptcb, struct tcp_hdr* tcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {
-   printf("In tcp fin1 state.\n");
+   logger(LOG_TCP, LOG_LEVEL_NORMAL, "In tcp fin1 state for tcb %u.\n", ptcb->identifier);
    if(ptcb->state == TCP_STATE_FIN_1) {
       ptcb->state = TCP_STATE_CLOSED;
    }

@@ -59,12 +59,12 @@ void sendtcpdata(struct tcb *ptcb, unsigned char *data, int len)
    uint8_t tcp_len = 20 + option_len;
    uint8_t pad = (tcp_len%4) ? 4 - (tcp_len % 4): 0;
    tcp_len += pad;
-   logger(LOG_TCP, NORMAL, "padding option %d\n",  pad); 
+   logger(LOG_TCP, NORMAL, "padding option %d for tcb %u\n",  pad, ptcb->identifier); 
    char *nop = rte_pktmbuf_append (mbuf, pad); // always pad the option to make total size multiple of 4.
    memset(nop, 0, pad);
    tcp_len = (tcp_len + 3) / 4;  // len is in multiple of 4 bytes;  20  will be 5
    tcp_len = tcp_len << 4; // len has upper 4 bits position in tcp header.
-   logger(LOG_TCP, NORMAL, "sending tcp data of len %d total %d\n", data_len, tcp_len);
+   logger(LOG_TCP, NORMAL, "sending tcp data of len %d total %d for tcb %u\n", data_len, tcp_len, ptcb->identifier);
    struct tcp_hdr *ptcphdr = (struct tcp_hdr *)rte_pktmbuf_prepend (mbuf, sizeof(struct tcp_hdr));
   // printf("head room2 = %d\n", rte_pktmbuf_headroom(mbuf));
    if(ptcphdr == NULL) {
@@ -75,10 +75,10 @@ void sendtcpdata(struct tcb *ptcb, unsigned char *data, int len)
    ptcphdr->sent_seq = htonl(ptcb->next_seq);
    ptcb->next_seq += data_len;
    if(((ptcb->tcp_flags & TCP_FLAG_SYN) == TCP_FLAG_SYN) || ((ptcb->tcp_flags & TCP_FLAG_FIN) == TCP_FLAG_FIN)) {
-      printf("Increasing seq number by one for flag syn or fin\n");
+      logger(LOG_TCP, NORMAL, "Increasing seq number by one for flag syn or fin for tcb %u\n", ptcb->identifier);
       ptcb->next_seq += 1;
    }
-   printf("Next seq number is %u flags %u\n", ptcb->next_seq, ptcb->tcp_flags);
+   logger(LOG_TCP, LOG_LEVEL_NORMAL, "Next seq number is %u flags %u for tcb %u\n", ptcb->next_seq, ptcb->tcp_flags, ptcb->identifier);
    ptcphdr->recv_ack = htonl(ptcb->ack);
    ptcphdr->data_off = tcp_len;
    ptcphdr->tcp_flags =  ptcb->tcp_flags;
@@ -91,7 +91,8 @@ void sendtcpdata(struct tcb *ptcb, unsigned char *data, int len)
    
  //  printf(" null\n");
   // fflush(stdout);
-printf("ok sending tcp data\n");
+   logger(LOG_TCP, NORMAL, "[SENDING TCP PACKET] sending tcp packet seq %u ack %u and datalen %u for tcb %u\n", ntohl(ptcphdr->sent_seq), ntohl(ptcphdr->recv_ack), data_len, ptcb->identifier);
+   // push the mbuf in send_window unacknowledged data and increase the refrence count of this segment.
    ip_out(ptcb, mbuf, ptcphdr, data_len); 
 }
 /*

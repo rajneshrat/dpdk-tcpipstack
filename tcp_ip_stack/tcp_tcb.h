@@ -10,6 +10,7 @@
 extern int Ntcb;
 struct ReceiveWindow_; // forward declaration to break cyclic dependency.
 // make mac address also part of it.
+extern struct tcb *tcbs[];
 struct tcb
 {
    uint16_t identifier;
@@ -20,6 +21,8 @@ struct tcb
    uint32_t max_seq_received;
    uint32_t ack;
    uint32_t next_seq;
+   int16_t rto_timer; // the current value of transmission timer.
+   int16_t rto_value;  //cureent threashold value of rto.
    int WaitingOnAccept;
    int WaitingOnConnect;
    int WaitingOnRead;
@@ -28,6 +31,8 @@ struct tcb
    struct tcb *newpTcbOnAccept;
    uint32_t ipv4_dst;
    uint32_t ipv4_src;
+//   char ipv4_dst_str[32];
+//   char ipv4_src_str[32];
    char dest_mac[6];
    char src_mac[6];
    struct ReceiveWindow_ *RecvWindow;

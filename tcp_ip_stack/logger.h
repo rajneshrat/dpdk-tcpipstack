@@ -18,6 +18,7 @@ typedef enum {
 
 typedef enum {
    CRITICAL,
+   LOG_LEVEL_CRITICAL,
    NORMAL,
    LOG_LEVEL_NORMAL,
    ALL,

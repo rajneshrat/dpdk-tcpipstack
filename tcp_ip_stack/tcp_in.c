@@ -97,7 +97,7 @@ int tcp_in(struct rte_mbuf *mbuf)
    if((ptcb->state == LISTENING) && !(ptcphdr->tcp_flags & TCP_FLAG_SYN)) {
       rte_pktmbuf_free(mbuf);
       send_reset(hdr, ptcphdr);
-      printf("Ignoring non syn flag for listen tcb\n");
+      logger(LOG_TCP, CRITICAL, "Ignoring non syn flag for listen tcb %u\n", ptcb->identifier);
       return 0;
    }
    if((ptcphdr->tcp_flags & TCP_FLAG_FIN)) {
@@ -106,11 +106,10 @@ int tcp_in(struct rte_mbuf *mbuf)
   
    printf("tcb identifier = %d\n", ptcb->identifier);
    if(tcpok(ptcb, mbuf)) {
-      ptcb->need_ack_now = 1; // we need to ack this later.
       if(ntohl(ptcphdr->sent_seq) > ptcb->max_seq_received) {
          ptcb->max_seq_received = ntohl(ptcphdr->sent_seq); 
       }
-      logger(LOG_TCP, NORMAL, "sending tcp packet\n");
+      logger(LOG_TCP, NORMAL, "[RECEIVED TCP PACKET] received tcp packet seq %u ack %u for tcb %u\n", ntohl(ptcphdr->sent_seq), ntohl(ptcphdr->recv_ack), ptcb->identifier);
       tcpswitch[ptcb->state](ptcb, ptcphdr, hdr, mbuf);
          //rte_pktmbuf_free(mbuf) ;// higher layer let decide this
       // need to fix check fro

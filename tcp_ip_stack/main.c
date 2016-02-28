@@ -223,7 +223,7 @@ send_packet_out(struct rte_mbuf *mbuf, int port)
    }
    mbuf_arr[0] = mbuf;
    //printf("sending port from %d\n", port);
-   int total_packets_sent = rte_eth_tx_burst(1, 0, &mbuf_arr[0], 1);
+   int total_packets_sent = rte_eth_tx_burst(PORT_CONFIGURE, 0, &mbuf_arr[0], 1);
    (void) port;
    //int total_packets_sent = rte_eth_tx_burst(port, 0, &mbuf_arr[0], 1);
    return total_packets_sent;
@@ -295,7 +295,7 @@ l2fwd_main_loop(void)
 	//		portid);
 	}
 
-   portid = 1;//ports ++;
+   portid = PORT_CONFIGURE;//ports ++;
 
 	while (1) {
 

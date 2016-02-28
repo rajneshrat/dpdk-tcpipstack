@@ -5,12 +5,6 @@
 //#include "tcp_tcb.h"
 struct tcb;
 
-#if 0
-int tcp_listen(struct tcb *, struct tcp_hdr *, struct ipv4_hdr *);
-int tcp_closed(struct tcb *ptcb, struct tcp_hdr *mbuf, struct ipv4_hdr *);
-int tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* mbuf, struct ipv4_hdr *);
-int tcp_established(struct tcb *ptcb, struct tcp_hdr* mbuf, struct ipv4_hdr *);
-#endif
 enum TCP_STATE_{
    TCP_STATE_CLOSED,
    LISTENING,

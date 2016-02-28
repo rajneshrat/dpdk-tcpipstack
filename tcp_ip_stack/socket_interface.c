@@ -9,6 +9,7 @@
 #include "tcp_out.h"
 #include <unistd.h>
 #include "tcp.h"
+#include "logger.h"
 
 enum Msg_Type {
    SOCKET_CLOSE,
@@ -163,7 +164,7 @@ check_socket_out_queue(void)
       int num = rte_ring_dequeue(ptcb->tcb_socket_ring_recv, (void **)&msg);
       if(num < 0) {
          if(ptcb->need_ack_now) {
-            printf("sending immidiate ack\n");
+            logger(LOG_TCP, LOG_LEVEL_NORMAL, "sending immidiate ack for tcb %u\n", ptcb->identifier);
             ptcb->tcp_flags = TCP_FLAG_ACK;
             sendtcpdata(ptcb, NULL, 0);
             ptcb->need_ack_now = 0;

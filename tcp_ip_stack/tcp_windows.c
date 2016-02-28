@@ -35,6 +35,9 @@ int DeletePair(struct OutOfSeqPair  *Pair)
    return 0;
 }
 
+// This holds the out of sequence packets. Here we store the complete mbuf and create the link list of them.
+// The logic here is simple, just add the new incoming buffer and then adjust the complete list if we need to delete any node.
+//
 uint32_t AdjustPair(ReceiveWindow *Window, uint32_t StartSeqNumber, uint16_t Length, struct rte_mbuf *mbuf, int TcpLen, uint8_t TcpFlags)
 {
    struct OutOfSeqPair *Pair = Window->SeqPairs;
@@ -111,14 +114,14 @@ static int PushDataInQueue(int identifier)
    struct tcb *ptcb = get_tcb_by_identifier(identifier);
    if((len = GetData(identifier, Buffer, 2000))) {
       void *msg = NULL;
-      printf("Pushing data of len %u to tcb %u\n", len, identifier);
+      logger(LOG_TCP, LOG_LEVEL_NORMAL, "Pushing data of len %u to tcb %u\n", len, identifier);
       if (rte_mempool_get(buffer_message_pool, &msg) < 0) {
-         printf ("Failed to get message buffer\n");
+         logger (LOG_TCP, LOG_LEVEL_CRITICAL, "Failed to get message buffer for tcb %u\n", identifier);
 /// / put assert ;
       }
       memcpy(msg, Buffer, len);
       if (rte_ring_enqueue(ptcb->socket_tcb_ring_send, msg) < 0) {
-         printf("Failed to send message - message discarded\n");
+         logger(LOG_TCP, LOG_LEVEL_CRITICAL, "Failed to send message - message discarded for tcb %u\n", identifier);
          rte_mempool_put(buffer_message_pool, msg);
       }
    }
@@ -147,7 +150,7 @@ int GetData(int identifier, unsigned char *Buffer, uint32_t len)
    if(Pair) {
       if(Pair->SequenceNumber <= Window->CurrentSequenceNumber) {
               // we have something to send to socket.
-         assert((Pair->SequenceNumber + Pair->Length) > Window->CurrentSequenceNumber); 
+         assert((Pair->SequenceNumber + Pair->Length) > Window->CurrentSequenceNumber); // we should have sent this sequence number to socket by now. how come it is  still here. I don't now if there is any scenrio where i will see this. 
          int tcp_len = Pair->TcpLen;
          char *data =  (char *)(rte_pktmbuf_mtod(mbuf, unsigned char *) + 
                         sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr) +  
@@ -180,7 +183,11 @@ int PushData(struct rte_mbuf *mbuf, struct tcp_hdr* ptcphdr, uint16_t Length, st
    uint32_t SequenceNumber = ntohl(ptcphdr->sent_seq);
    ReceiveWindow *Window = (ReceiveWindow *) ptcb->RecvWindow;
    if(Window->SeqPairs && ((SequenceNumber - Window->SeqPairs->SequenceNumber + Length) < Window->CurrentSize)) { // sequence number out of receive window size 
-      printf("WARNING :: Out of window data, dropping all\n");
+      logger(LOG_TCP, LOG_LEVEL_NORMAL, "WARNING :: Out of window data, dropping all\n");
+      return -1;
+   }
+   if(Window->CurrentSequenceNumber >=  (SequenceNumber + Length)) { // must be a duplicate packet.
+      logger(LOG_TCP, LOG_LEVEL_NORMAL, "WARNING :: duplicate packet , dropping all\n");
       return -1;
    }
    int tcp_len = (ptcphdr->data_off >> 4) * 4;
