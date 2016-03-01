@@ -92,7 +92,8 @@ void sendtcpdata(struct tcb *ptcb, unsigned char *data, int len)
  //  printf(" null\n");
   // fflush(stdout);
    logger(LOG_TCP, NORMAL, "[SENDING TCP PACKET] sending tcp packet seq %u ack %u and datalen %u for tcb %u\n", ntohl(ptcphdr->sent_seq), ntohl(ptcphdr->recv_ack), data_len, ptcb->identifier);
-   // push the mbuf in send_window unacknowledged data and increase the refrence count of this segment.
+   // push the mbuf in send_window unacknowledged data and increase the refrence count of this segment also start the rto timer for this tcb.
+   PushDataToSendWindow(ptcb, mbuf, ntohl(ptcphdr->sent_seq), ptcb->next_seq);  
    ip_out(ptcb, mbuf, ptcphdr, data_len); 
 }
 /*

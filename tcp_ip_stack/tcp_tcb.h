@@ -36,6 +36,7 @@ struct tcb
    char dest_mac[6];
    char src_mac[6];
    struct ReceiveWindow_ *RecvWindow;
+   struct SendWindow_ *SendWindow;
    TCP_STATE state;
    pthread_mutex_t mutex;
    int m_IsSocketTcbRingIntialized;

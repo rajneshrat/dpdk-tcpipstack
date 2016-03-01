@@ -110,6 +110,8 @@ int tcp_in(struct rte_mbuf *mbuf)
          ptcb->max_seq_received = ntohl(ptcphdr->sent_seq); 
       }
       logger(LOG_TCP, NORMAL, "[RECEIVED TCP PACKET] received tcp packet seq %u ack %u for tcb %u\n", ntohl(ptcphdr->sent_seq), ntohl(ptcphdr->recv_ack), ptcb->identifier);
+      // remove the pair from send window and if all are done adjust the rto timer.
+      AdjustSendWindow(ptcb, ntohl(ptcphdr->recv_ack));
       tcpswitch[ptcb->state](ptcb, ptcphdr, hdr, mbuf);
          //rte_pktmbuf_free(mbuf) ;// higher layer let decide this
       // need to fix check fro

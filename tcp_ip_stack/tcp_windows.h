@@ -42,8 +42,31 @@ struct ReceiveWindow_ {
    //struct SequenceLengthPair *SeqPairs;
    struct OutOfSeqPair *SeqPairs;
 };
-
 typedef struct ReceiveWindow_ ReceiveWindow;
+struct SendSeqPair {
+   uint32_t m_StartSeqNumber;
+   uint32_t m_EndSeqNumber;
+   struct rte_mbuf *m_mbuf;
+   struct SendSeqPair *Next;
+};
+
+struct SendWindow_ {
+   int MaxSize;
+   uint32_t CurrentSize;
+   uint32_t StartSequenceNumber; // needed for buffer maangament
+   uint32_t CurrentSequenceNumber; // the next least sequence number from which data to wire has to acknowledged.
+   //struct SequenceLengthPair *SeqPairs;
+   struct SendSeqPair *Head;
+   struct SendSeqPair *Last;
+};
+typedef struct SendWindow_ SendWindow;
+
+int
+PushDataToSendWindow(struct tcb *ptcb, struct rte_mbuf* mbuf, uint32_t StartSeq, uint32_t EndSeq);  
+
+int
+AdjustSendWindow(struct tcb *ptcb, uint32_t AckValue);
+
 ReceiveWindow *AllocWindow(int MaxSize, int CurrentSize);
 int FreeWindow(ReceiveWindow *Window);
 int PushData(struct rte_mbuf *mbuf, struct tcp_hdr* ptcphdr, uint16_t Length, struct tcb *ptcb);

@@ -19,8 +19,10 @@ void DoRtoTimer(void)
               //rto has expired, send the first non ack packet again. 
               // create a send window and use it to send data. 
               // set the value of rto_value aggain.
+              // adjust the window for slow start.
          }
          else {
+            ptcb->rto_timer ++;
             // increase the rto_timer value.
          }
       }

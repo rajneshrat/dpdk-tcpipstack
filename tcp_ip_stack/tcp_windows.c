@@ -172,10 +172,69 @@ int GetData(int identifier, unsigned char *Buffer, uint32_t len)
 
 int SendAck(void)
 {
+   assert(0); // remove this function at all.
    printf("Sending Syn Ack\n");
    return 0;
 
 }
+int
+AdjustSendWindow(struct tcb *ptcb, uint32_t AckValue)
+{
+   SendWindow *Window = ptcb->SendWindow;
+   if(Window->Head == NULL) {
+      assert(ptcb->rto_timer == -1); // rto timer must be stop
+      return 0;
+      // no data to ack. SendWindow is empty.
+   }
+   if(Window->Head->m_StartSeqNumber >= AckValue){
+      assert(ptcb->rto_timer == -1); // rto timer must be stop
+      return 0;
+      // no new data ack.
+   }
+   if(Window->Last->m_EndSeqNumber < AckValue) {
+      // not possible but ok what can be done now.
+   }
+   struct SendSeqPair *temp = NULL;
+   struct SendSeqPair *head = Window->Head;
+   while(head && (head->m_EndSeqNumber < AckValue)) {
+      temp = head;
+      head = head->Next;
+      Window->CurrentSize -= (temp->m_EndSeqNumber - temp->m_StartSeqNumber);
+      rte_pktmbuf_free(temp->m_mbuf);
+      free(temp);
+   }
+   if(head == NULL) {
+      Window->Last = NULL;
+      ptcb->rto_timer = -1; // stop the timer
+   }
+   Window->Head = head;
+   return 1;
+}
+
+// the logic here is very simple. just add the new pair at last and adjust the size.
+int
+PushDataToSendWindow(struct tcb *ptcb, struct rte_mbuf* mbuf, uint32_t StartSeq, uint32_t EndSeq)
+{
+   SendWindow *Window = ptcb->SendWindow;
+   ptcb->rto_timer = 0; // start the timer, 0 is the first value, now we have somthing which should be acked
+   struct SendSeqPair *temp = (struct SendSeqPair *)malloc(sizeof (struct SendSeqPair));
+   temp->m_StartSeqNumber = StartSeq;
+   temp->m_EndSeqNumber = EndSeq;
+   temp->Next = NULL;
+   rte_pktmbuf_refcnt_update(mbuf, 1);
+   temp->m_mbuf = mbuf;
+   if(Window->Head == NULL) {
+      assert(Window->Last == NULL);
+      Window->Head = temp;
+   }
+   else {
+      assert(Window->Last->m_EndSeqNumber == StartSeq);
+      Window->Last->Next = temp;
+      Window->Last = temp;
+   }
+   Window->CurrentSize += (EndSeq - StartSeq);
+   return 0;
+} 
 
 int PushData(struct rte_mbuf *mbuf, struct tcp_hdr* ptcphdr, uint16_t Length, struct tcb *ptcb)
 {
