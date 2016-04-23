@@ -1,5 +1,6 @@
 fix tcp header.
 
+creaate wiki page
 move main separate and create library.
 fix main, use only part needed.
 make it a library.
@@ -7,9 +8,19 @@ write sample server example.
 fix tcp output.
 
 
-write sendsynack.
-write function tcpdoack.
-write tcp_send basic without windows protocol.
+packet should be send out depending on the route.
+
+fix state changes on closing socket.
+closing of socket after 1 min.
+implement retransmission.
+implement tcp options on basis of coming in packet.
+implement slow start and other.
+
+   
+// push the mbuf in send_window unacknowledged data and increase the refrence count of this segment.
+implement live counters.
+implement own malloc library. use mymalloc like that or something else..
+
 
 write vector implementation and use those data structure.
 http://dpdk.org/doc/guides/prog_guide/packet_framework.html
