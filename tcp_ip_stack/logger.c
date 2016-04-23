@@ -31,6 +31,7 @@ void log_print(FEATURE Feature, TRACE_LEVEL Level, const char *format,  ...)
       FILE *fd = fopen(LOG_FILE, "a");
       //vfprintf(fd, "Log feature %d ---- ", Feature);
       vfprintf(fd, format, arglist);
+      fprintf(fd, "\n");
       fclose(fd);
       va_end(arglist);
    }

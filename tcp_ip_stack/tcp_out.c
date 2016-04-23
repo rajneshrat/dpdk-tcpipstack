@@ -50,6 +50,14 @@ uint8_t add_timestamp_option(struct rte_mbuf *mbuf, uint32_t value, uint32_t ech
    return 10;
 }
 
+int
+RetransmitPacket(struct rte_mbuf* mbuf, struct tcb *ptcb, int data_len)
+{
+   struct tcp_hdr *ptcphdr = (struct tcp_hdr *)rte_pktmbuf_mtod(mbuf, struct tcp_hdr *);
+   ip_out(ptcb, mbuf, ptcphdr, data_len); 
+   return 0;
+}
+
 void sendtcpdata(struct tcb *ptcb, unsigned char *data, int len)
 {
    //uint8_t tcp_len = 0x50 + add_mss_option(mbuf, 1300);// + add_winscale_option(mbuf, 7);
@@ -93,7 +101,7 @@ void sendtcpdata(struct tcb *ptcb, unsigned char *data, int len)
   // fflush(stdout);
    logger(LOG_TCP, NORMAL, "[SENDING TCP PACKET] sending tcp packet seq %u ack %u and datalen %u for tcb %u\n", ntohl(ptcphdr->sent_seq), ntohl(ptcphdr->recv_ack), data_len, ptcb->identifier);
    // push the mbuf in send_window unacknowledged data and increase the refrence count of this segment also start the rto timer for this tcb.
-   PushDataToSendWindow(ptcb, mbuf, ntohl(ptcphdr->sent_seq), ptcb->next_seq);  
+   PushDataToSendWindow(ptcb, mbuf, ntohl(ptcphdr->sent_seq), ptcb->next_seq, data_len);  
    ip_out(ptcb, mbuf, ptcphdr, data_len); 
 }
 /*

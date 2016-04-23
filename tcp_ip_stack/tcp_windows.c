@@ -177,6 +177,22 @@ int SendAck(void)
    return 0;
 
 }
+
+int
+GetFirstUnAckedPacket(struct tcb *ptcb, int *data_len, struct rte_mbuf **mbuf)
+{
+   SendWindow *Window = ptcb->SendWindow;
+   if(Window->Head == NULL) {
+      logger(LOG_TCP, LOG_LEVEL_CRITICAL, "Attempt to get unacked packet from empty window");
+      *mbuf = NULL;
+   }
+   struct SendSeqPair *temp = Window->Head;
+   *data_len = temp->m_DataLen;
+   *mbuf = temp->m_mbuf; 
+   rte_pktmbuf_refcnt_update(temp->m_mbuf, 1);
+   return 0;
+}
+
 int
 AdjustSendWindow(struct tcb *ptcb, uint32_t AckValue)
 {
@@ -213,19 +229,22 @@ AdjustSendWindow(struct tcb *ptcb, uint32_t AckValue)
 
 // the logic here is very simple. just add the new pair at last and adjust the size.
 int
-PushDataToSendWindow(struct tcb *ptcb, struct rte_mbuf* mbuf, uint32_t StartSeq, uint32_t EndSeq)
+PushDataToSendWindow(struct tcb *ptcb, struct rte_mbuf* mbuf, uint32_t StartSeq, uint32_t EndSeq, int data_len)
 {
    SendWindow *Window = ptcb->SendWindow;
+   logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "starting rto timer\n");
    ptcb->rto_timer = 0; // start the timer, 0 is the first value, now we have somthing which should be acked
    struct SendSeqPair *temp = (struct SendSeqPair *)malloc(sizeof (struct SendSeqPair));
    temp->m_StartSeqNumber = StartSeq;
    temp->m_EndSeqNumber = EndSeq;
+   temp->m_DataLen = data_len;
    temp->Next = NULL;
    rte_pktmbuf_refcnt_update(mbuf, 1);
    temp->m_mbuf = mbuf;
    if(Window->Head == NULL) {
       assert(Window->Last == NULL);
       Window->Head = temp;
+      Window->Last = temp;
    }
    else {
       assert(Window->Last->m_EndSeqNumber == StartSeq);
@@ -266,7 +285,7 @@ int FreeWindow(ReceiveWindow *Window)
    return 0;
 }
 
-ReceiveWindow *AllocWindow(int MaxSize, int CurrentSize)
+ReceiveWindow *AllocReceiveWindow(int MaxSize, int CurrentSize)
 {
    ReceiveWindow *Window = malloc(sizeof(ReceiveWindow));
    Window->MaxSize = MaxSize;
@@ -274,6 +293,19 @@ ReceiveWindow *AllocWindow(int MaxSize, int CurrentSize)
    Window->StartSequenceNumber = 0;
    Window->CurrentSequenceNumber = 0;
    Window->SeqPairs = NULL;
+   //Window->Data = malloc(MaxSize);
+   return Window;
+}
+
+SendWindow *AllocSendWindow(int MaxSize, int CurrentSize)
+{
+   SendWindow *Window = malloc(sizeof(SendWindow));
+   Window->MaxSize = MaxSize;
+   Window->CurrentSize = CurrentSize;
+   Window->StartSequenceNumber = 0;
+   Window->CurrentSequenceNumber = 0;
+   Window->Head = NULL;
+   Window->Last = NULL;
    //Window->Data = malloc(MaxSize);
    return Window;
 }

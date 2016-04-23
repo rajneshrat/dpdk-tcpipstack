@@ -39,8 +39,8 @@ tcp_syn_sent(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, 
    sendack(ptcb); // this should not be here, use senddata api only but with 0 data.
    //sendsynack(ptcb);
    return 0;
-
 }
+
 int
 tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {

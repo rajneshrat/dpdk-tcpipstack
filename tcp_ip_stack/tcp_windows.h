@@ -47,6 +47,7 @@ struct SendSeqPair {
    uint32_t m_StartSeqNumber;
    uint32_t m_EndSeqNumber;
    struct rte_mbuf *m_mbuf;
+   int m_DataLen;
    struct SendSeqPair *Next;
 };
 
@@ -62,12 +63,14 @@ struct SendWindow_ {
 typedef struct SendWindow_ SendWindow;
 
 int
-PushDataToSendWindow(struct tcb *ptcb, struct rte_mbuf* mbuf, uint32_t StartSeq, uint32_t EndSeq);  
+PushDataToSendWindow(struct tcb *ptcb, struct rte_mbuf* mbuf, uint32_t StartSeq, uint32_t EndSeq, int data_len);  
 
+int GetFirstUnAckedPacket(struct tcb *ptcb, int *data_len, struct rte_mbuf **mbuf);
 int
 AdjustSendWindow(struct tcb *ptcb, uint32_t AckValue);
 
-ReceiveWindow *AllocWindow(int MaxSize, int CurrentSize);
+ReceiveWindow *AllocReceiveWindow(int MaxSize, int CurrentSize);
+SendWindow *AllocSendWindow(int MaxSize, int CurrentSize);
 int FreeWindow(ReceiveWindow *Window);
 int PushData(struct rte_mbuf *mbuf, struct tcp_hdr* ptcphdr, uint16_t Length, struct tcb *ptcb);
 int GetData(int identifier, unsigned char *Buffer, uint32_t len);

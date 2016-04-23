@@ -46,6 +46,8 @@ struct tcb* alloc_tcb(uint16_t MaxWindSize, uint16_t CurrentWindSize)
    memset(ptcb, 0, sizeof(struct tcb));
    ptcb->identifier = IdentifierCount++;
    ptcb->need_ack_now = 0;
+   ptcb->rto_value = 2;  // need to fix this.
+   ptcb->rto_timer = -1; // negative idicates it is not started.
    sprintf(ptcb->TCB_TO_SOCKET_RING_NAME,"TtoS%d", ptcb->identifier);
    sprintf(ptcb->SOCKET_TO_TCB_RING_NAME,"StoT%d", ptcb->identifier);
 // assert if size crosses of buffer ring name.
@@ -79,7 +81,8 @@ struct tcb* alloc_tcb(uint16_t MaxWindSize, uint16_t CurrentWindSize)
    else {
       printf("Socket tcb ring send side OK\n");
    }
-   ptcb->RecvWindow = AllocWindow(MaxWindSize, CurrentWindSize);
+   ptcb->RecvWindow = AllocReceiveWindow(MaxWindSize, CurrentWindSize);
+   ptcb->SendWindow = AllocSendWindow(MaxWindSize, CurrentWindSize);
    pthread_mutex_lock(&tcb_alloc_mutex); // change name of lock to other.
    // lock is to safe ntcb array as it is accessed from other thread alos.
    assert(Ntcb < TOTAL_TCBS);
