@@ -44,10 +44,35 @@ tcp_syn_sent(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, 
 int
 tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {
+   int tcp_len = (ptcphdr->data_off >> 4) * 4;
+   int ip_header_len = ((iphdr->version_ihl) & (0x0f)) * 4;
+   int datalen = ntohs(iphdr->total_length) - ip_header_len - tcp_len;
    logger(LOG_TCP, LOG_LEVEL_NORMAL, "In tcp syn rcv state for tcb %u.\n", ptcb->identifier);
    printf("tcp syn recv state\n");
-   int tcp_len = (ptcphdr->data_off >> 4) * 4;
-   int datalen = rte_pktmbuf_pkt_len(mbuf) - (sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr) + tcp_len);
+   if(ntohl(ptcphdr->recv_ack) != ptcb->next_seq) {
+      logger(LOG_TCP, LOG_LEVEL_CRITICAL, "dropping this packet, the ack %u not matching with our syn ack seq %u.\n", ntohl(ptcphdr->recv_ack), ptcb->next_seq);
+      rte_pktmbuf_free(mbuf);
+      reflect_reset(iphdr, ptcphdr);
+      //clean the tcb also. future work.
+      return -1;
+   }
+   if(datalen != 0) {
+      // this may be logical that we should support this case where the ack of handshake is lost but we are reciving the next packet.
+      // Till now we are not supporting this case and reset will be sent to sender.
+      logger(LOG_TCP, LOG_LEVEL_CRITICAL, "dropping this packet as we do not expect data with non zero len on ack of threeway handshake. Data len = %u\n", datalen);
+      rte_pktmbuf_free(mbuf);
+      reflect_reset(iphdr, ptcphdr);
+      //clean the tcb also. future work.
+      return -1;
+   }
+
+   struct tcb *pTcbOnAccept = ptcb->m_TcbWaitingOnAccept;
+   // signal the tcb waiting on accpet.
+   pthread_mutex_lock(&(pTcbOnAccept->mutex));
+   logger(LOG_TCP, LOG_LEVEL_NORMAL, "signaling accept mutex for tcb %u.\n", pTcbOnAccept->identifier);
+   pthread_cond_signal(&(pTcbOnAccept->condAccept));
+   pthread_mutex_unlock(&(pTcbOnAccept->mutex));
+   //int datalen = rte_pktmbuf_pkt_len(mbuf) - (sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr) + tcp_len);
    (void) iphdr;
    (void) mbuf;
    if(datalen != 0) {
@@ -93,7 +118,10 @@ tcp_established(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphd
      // ptcb->read_buffer = (unsigned char *) malloc(datalen);
      // ptcb->read_buffer_len = datalen;
       //memcpy(ptcb->read_buffer, data_buffer, datalen); 
-      PushData(mbuf, ptcphdr, datalen, ptcb);
+      if(PushData(mbuf, ptcphdr, datalen, ptcb) < 0) {
+           rte_pktmbuf_free(mbuf);
+           mbuf = NULL;
+      }
       // this is not needed now. we use queue now.
       pthread_mutex_lock(&(ptcb->mutex));
       if(ptcb->WaitingOnRead) {
@@ -141,10 +169,7 @@ tcp_listen(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, st
    // set src port;
    // set ips.
    ptcb->newpTcbOnAccept = new_ptcb;
-   pthread_mutex_lock(&(ptcb->mutex));
-   logger(LOG_TCP, LOG_LEVEL_NORMAL, "signaling accept mutex for tcb %u.\n", ptcb->identifier);
-   pthread_cond_signal(&(ptcb->condAccept));
-   pthread_mutex_unlock(&(ptcb->mutex));
+   new_ptcb->m_TcbWaitingOnAccept = ptcb;
    //printf("sending ack\n");
    //sendack(new_ptcb);
    new_ptcb->tcp_flags = TCP_FLAG_SYN | TCP_FLAG_ACK; 

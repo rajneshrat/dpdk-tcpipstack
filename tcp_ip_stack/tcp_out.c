@@ -58,6 +58,56 @@ RetransmitPacket(struct rte_mbuf* mbuf, struct tcb *ptcb, int data_len)
    return 0;
 }
 
+void reflect_reset(struct ipv4_hdr *ip_hdr, struct tcp_hdr *t_hdr)
+{
+   send_reset(ip_hdr, t_hdr);
+}
+// this should be renamed as reflect reset as it sends the reset for incoing packet passwd as argument.
+
+void send_reset(struct ipv4_hdr *ip_hdr, struct tcp_hdr *t_hdr)
+{
+   printf("sending reset\n");
+   struct rte_mbuf *mbuf = get_mbuf();
+   //printf("head room = %d\n", rte_pktmbuf_headroom(mbuf));
+  // rte_pktmbuf_adj(mbuf, sizeof(struct tcp_hdr) + sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr));
+   struct tcp_hdr *ptcphdr = (struct tcp_hdr *)rte_pktmbuf_prepend (mbuf, sizeof(struct tcp_hdr));
+   //printf("head room2 = %d\n", rte_pktmbuf_headroom(mbuf));
+   if(ptcphdr == NULL) {
+      //printf("tcp header is null\n");
+   }
+
+
+   uint8_t tcp_len = 20 ;
+   tcp_len = (tcp_len + 3) / 4;  // len is in multiple of 4 bytes;  20  will be 5
+   tcp_len = tcp_len << 4; // len has upper 4 bits position in tcp header.
+  // printf("head room2 = %d\n", rte_pktmbuf_headroom(mbuf));
+   if(ptcphdr == NULL) {
+    //  printf("tcp header is null\n");
+   }
+   ptcphdr->data_off = tcp_len;
+
+
+   ptcphdr->src_port = t_hdr->dst_port;
+   ptcphdr->dst_port = t_hdr->src_port;
+   ptcphdr->sent_seq = t_hdr->recv_ack;
+   ptcphdr->recv_ack = 0;
+   ptcphdr->tcp_flags =  TCP_FLAG_RST;
+   ptcphdr->rx_win = 12000;
+   ptcphdr->tcp_urp = 0; 
+   
+  // struct ipv4_hdr *hdr = (struct ipv4_hdr *)rte_pktmbuf_prepend (mbuf, sizeof(struct ipv4_hdr));
+   //printf("head room4 = %d\n", rte_pktmbuf_headroom(mbuf));
+       //printf("ip header is null\n");
+   //    fflush(stdout);
+   struct tcb ptcb;
+   ptcb.identifier = 0; // dummy 
+   
+   ptcb.ipv4_dst = ip_hdr->dst_addr;  // fix it future , why we have htonl only for src
+   ptcb.ipv4_src = htonl(ip_hdr->src_addr);
+   fflush(stdout);
+   ip_out(&ptcb, mbuf, ptcphdr, 0); 
+}
+
 void sendtcpdata(struct tcb *ptcb, unsigned char *data, int len)
 {
    //uint8_t tcp_len = 0x50 + add_mss_option(mbuf, 1300);// + add_winscale_option(mbuf, 7);

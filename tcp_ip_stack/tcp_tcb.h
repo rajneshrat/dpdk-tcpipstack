@@ -29,6 +29,7 @@ struct tcb
    unsigned char *read_buffer;
    int read_buffer_len;
    struct tcb *newpTcbOnAccept;
+   struct tcb *m_TcbWaitingOnAccept;
    uint32_t ipv4_dst;
    uint32_t ipv4_src;
 //   char ipv4_dst_str[32];

@@ -48,6 +48,7 @@ struct tcb* alloc_tcb(uint16_t MaxWindSize, uint16_t CurrentWindSize)
    ptcb->need_ack_now = 0;
    ptcb->rto_value = 2;  // need to fix this.
    ptcb->rto_timer = -1; // negative idicates it is not started.
+   ptcb->m_TcbWaitingOnAccept = NULL;
    sprintf(ptcb->TCB_TO_SOCKET_RING_NAME,"TtoS%d", ptcb->identifier);
    sprintf(ptcb->SOCKET_TO_TCB_RING_NAME,"StoT%d", ptcb->identifier);
 // assert if size crosses of buffer ring name.
