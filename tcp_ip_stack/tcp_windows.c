@@ -56,6 +56,7 @@ uint32_t AdjustPair(ReceiveWindow *Window, uint32_t StartSeqNumber, uint16_t Len
    NewPair->mbuf = mbuf;
    NewPair->TcpLen = TcpLen;
    NewPair->HasFin = TcpFlags & TCP_FLAG_FIN;
+   NewPair->Flags = TcpFlags & TCP_FLAG_FIN;
    NewPair->Next = NextPair;
    if(Pair) {
       Pair->Next = NewPair;
@@ -150,19 +151,27 @@ int GetData(int identifier, unsigned char *Buffer, uint32_t len)
    if(Pair) {
       if(Pair->SequenceNumber <= Window->CurrentSequenceNumber) {
               // we have something to send to socket.
-         assert((Pair->SequenceNumber + Pair->Length) > Window->CurrentSequenceNumber); // we should have sent this sequence number to socket by now. how come it is  still here. I don't now if there is any scenrio where i will see this. 
          int tcp_len = Pair->TcpLen;
-         char *data =  (char *)(rte_pktmbuf_mtod(mbuf, unsigned char *) + 
-                        sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr) +  
-                            tcp_len);
-         int datalen = rte_pktmbuf_pkt_len(mbuf) - (sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr) + tcp_len);
-         assert(datalen == Pair->Length);
-         uint32_t offset = Window->CurrentSequenceNumber - Pair->SequenceNumber;
-         assert((Pair->Length-offset) < len);
-         memcpy(Buffer, data + offset, Pair->Length - offset); 
+         int DataSent = 0;
+         if(Pair->Length != 0) {
+            assert((Pair->SequenceNumber + Pair->Length) > Window->CurrentSequenceNumber); // we should have sent this sequence number to socket by now. how come it is  still here. I don't now if there is any scenrio where i will see this. 
+            char *data =  (char *)(rte_pktmbuf_mtod(mbuf, unsigned char *) + 
+                           sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr) +  
+                               tcp_len);
+            int datalen = Pair->Length;
+            //int datalen = rte_pktmbuf_pkt_len(mbuf) - (sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr) + tcp_len);  // can we use pair length here. it should be same.
+            assert(datalen == Pair->Length);
+            uint32_t offset = Window->CurrentSequenceNumber - Pair->SequenceNumber;
+            assert((Pair->Length-offset) < len);
+            memcpy(Buffer, data + offset, Pair->Length - offset); 
+            DataSent = Pair->Length - offset;
+         }
+         else {
+            logger(LOG_TCP_WINDOW, LOG_LEVEL_CRITICAL, "Seen receive pair of 0 len this must be fin.");
+            assert(Pair->Flags != 0);
+         }
          Window->SeqPairs = Pair->Next;
          Window->CurrentSequenceNumber = Pair->SequenceNumber + Pair->Length;
-         int DataSent = Pair->Length - offset;
          DeletePair(Pair);
          return DataSent;
       }
@@ -264,8 +273,8 @@ int PushData(struct rte_mbuf *mbuf, struct tcp_hdr* ptcphdr, uint16_t Length, st
       logger(LOG_TCP, LOG_LEVEL_NORMAL, "WARNING :: Out of window data, dropping all\n");
       return -1;
    }
-   if(Window->CurrentSequenceNumber >=  (SequenceNumber + Length)) { // must be a duplicate packet.
-      logger(LOG_TCP, LOG_LEVEL_NORMAL, "WARNING :: duplicate packet , dropping all\n");
+   if(Window->CurrentSequenceNumber > (SequenceNumber + Length)) { // must be a duplicate packet.
+      logger(LOG_TCP, LOG_LEVEL_NORMAL, "WARNING :: duplicate packet , dropping all; Current Seq = %u, Packet max length %u\n", Window->CurrentSequenceNumber, (SequenceNumber + Length));
       return -1;
    }
    int tcp_len = (ptcphdr->data_off >> 4) * 4;

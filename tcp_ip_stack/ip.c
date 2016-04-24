@@ -71,7 +71,7 @@ ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf, struct tcp_hdr *ptcphdr, uint8_t
         hdr->src_addr = ptcb->ipv4_dst;  // for outgoing src will be dest.
         //printf("dst ip is %x\n", ptcb->ipv4_dst);
         hdr->dst_addr = htonl(ptcb->ipv4_src);
-        hdr->version_ihl = 4 << 4 | 5;
+        hdr->version_ihl = 4 << 4 | 5; // this may be wrong if ip header is more than 5 bytes, but we are generating packet so it is ok.
         hdr->next_proto_id = IPPROTO_TCP;
         hdr->hdr_checksum = 0;
         hdr->time_to_live = 127;

@@ -73,22 +73,28 @@ tcp_established(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphd
   //change state to tcpfin1 
    }
    int tcp_len = (ptcphdr->data_off >> 4) * 4;
+   int ip_header_len = ((iphdr->version_ihl) & (0x0f)) * 4;
 #if 0
    char *data =  (char *)(rte_pktmbuf_mtod(mbuf, unsigned char *) + 
                   sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr) +  
                             tcp_len);
 #endif
-   int datalen = rte_pktmbuf_pkt_len(mbuf) - (sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr) + tcp_len);
+  // int datalen = rte_pktmbuf_pkt_len(mbuf) - (sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr) + tcp_len);
+   int datalen = ntohs(iphdr->total_length) - ip_header_len - tcp_len;
 //iphdr->total_length;// - ptcphdr->data_off;
  //  char *data_buffer = (char *) malloc(datalen);
  //  memcpy(data_buffer, data, datalen);
-   logger(LOG_TCP, LOG_LEVEL_NORMAL, "ip len %d tcp len %d buf len %d data len %u for tcb %u\n", ntohs(iphdr->total_length), tcp_len, rte_pktmbuf_pkt_len(mbuf), datalen, ptcb->identifier);
-   if(datalen) {
+   logger(LOG_TCP, LOG_LEVEL_NORMAL, "ip header len %d total len % d tcp len %d buf len %d data len %u for tcb %u\n", ip_header_len,  ntohs(iphdr->total_length), tcp_len, rte_pktmbuf_pkt_len(mbuf), datalen, ptcb->identifier);
+   if(ptcphdr->tcp_flags & TCP_FLAG_FIN) {
+         logger(LOG_TCP, LOG_LEVEL_NORMAL, "got FIN flag for tcb %d\n", ptcb->identifier);
+   }
+   if(datalen || (ptcphdr->tcp_flags & TCP_FLAG_FIN)) {
       ptcb->need_ack_now = 1; // we need to ack this data, remember it.
      // ptcb->read_buffer = (unsigned char *) malloc(datalen);
      // ptcb->read_buffer_len = datalen;
       //memcpy(ptcb->read_buffer, data_buffer, datalen); 
       PushData(mbuf, ptcphdr, datalen, ptcb);
+      // this is not needed now. we use queue now.
       pthread_mutex_lock(&(ptcb->mutex));
       if(ptcb->WaitingOnRead) {
          printf("signaling accept mutex.\n");
@@ -99,13 +105,13 @@ tcp_established(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphd
     //  free(ptcb->read_buffer);
    }
    else {
-      if(ptcphdr->tcp_flags & TCP_FLAG_FIN) {
-         logger(LOG_TCP, LOG_LEVEL_NORMAL, "**********Increasing ack for syn or fin  to %u for tcb %u\n", ntohl(ptcphdr->sent_seq) + 1, ptcb->identifier);
+      if(ptcphdr->tcp_flags & TCP_FLAG_FIN) {  // this we dont need remove it.
+         logger(LOG_TCP, LOG_LEVEL_NORMAL, "got FIN flag for tcb %d\n", ptcb->identifier);
+         logger(LOG_TCP, LOG_LEVEL_NORMAL, "**********Increasing ack for fin  to %u for tcb %u\n", ntohl(ptcphdr->sent_seq) + 1, ptcb->identifier);
       //   ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;  // this should add tcp len also.
        //  sendack(ptcb);
       }
    }
-// also increase ack for data. future work.
    return 0;
 }
 
