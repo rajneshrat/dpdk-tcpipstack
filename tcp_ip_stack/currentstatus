@@ -1,3 +1,13 @@
 25/4/2016 -
 BAsic api to recive and send tcp packet is done. There is no handling for retransmission or slow start. If our packet get lost we are not sending it again. This will be implemented next. Slow Start will be implemented later.
+Pending tasks -
+Slow Start.
+Retransmission.
+Creating separate library.
+Testing as tcp bridge. This will proxy the tcp connection by breaking it into two ends. Needed for testing purpose with real traffic.
+More logs.
+Creating 0 copy architecture. We are using buffer while moving data from tcp to scoket layer, this should be fixed.
+Deleting the tcb after some timout.
+Running multiple instances of tcp engine to provide n core architecture.
+
 
