@@ -1,0 +1,3 @@
+25/4/2016 -
+BAsic api to recive and send tcp packet is done. There is no handling for retransmission or slow start. If our packet get lost we are not sending it again. This will be implemented next. Slow Start will be implemented later.
+
