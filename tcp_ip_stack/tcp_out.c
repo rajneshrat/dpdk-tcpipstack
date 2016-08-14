@@ -67,6 +67,7 @@ void reflect_reset(struct ipv4_hdr *ip_hdr, struct tcp_hdr *t_hdr)
 void send_reset(struct ipv4_hdr *ip_hdr, struct tcp_hdr *t_hdr)
 {
    printf("sending reset\n");
+   logger(LOG_TCP, LOG_LEVEL_CRITICAL, "sending reset\n");
    struct rte_mbuf *mbuf = get_mbuf();
    //printf("head room = %d\n", rte_pktmbuf_headroom(mbuf));
   // rte_pktmbuf_adj(mbuf, sizeof(struct tcp_hdr) + sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr));

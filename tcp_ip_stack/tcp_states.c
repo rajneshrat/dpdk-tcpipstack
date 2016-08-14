@@ -41,6 +41,7 @@ tcp_syn_sent(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, 
    return 0;
 }
 
+// we have already recived the syn from remote but handhshake is not complete. last ack from remote is still pending.
 int
 tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, struct rte_mbuf *mbuf)
 {
@@ -51,15 +52,6 @@ tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, s
    printf("tcp syn recv state\n");
    if(ntohl(ptcphdr->recv_ack) != ptcb->next_seq) {
       logger(LOG_TCP, LOG_LEVEL_CRITICAL, "dropping this packet, the ack %u not matching with our syn ack seq %u.\n", ntohl(ptcphdr->recv_ack), ptcb->next_seq);
-      rte_pktmbuf_free(mbuf);
-      reflect_reset(iphdr, ptcphdr);
-      //clean the tcb also. future work.
-      return -1;
-   }
-   if(datalen != 0) {
-      // this may be logical that we should support this case where the ack of handshake is lost but we are reciving the next packet.
-      // Till now we are not supporting this case and reset will be sent to sender.
-      logger(LOG_TCP, LOG_LEVEL_CRITICAL, "dropping this packet as we do not expect data with non zero len on ack of threeway handshake. Data len = %u\n", datalen);
       rte_pktmbuf_free(mbuf);
       reflect_reset(iphdr, ptcphdr);
       //clean the tcb also. future work.
@@ -83,6 +75,14 @@ tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, s
       ptcb->ack = ntohl(ptcphdr->sent_seq) + 1;  // this should add tcp len also. but not needed for syn-ack.
    }
    ptcb->state = TCP_ESTABLISHED;
+   if(datalen != 0) {
+      // this may be logical that we should support this case where the ack of handshake is lost but we are reciving the next packet.
+      logger(LOG_TCP, LOG_LEVEL_CRITICAL, "seen non zero len on ack of threeway handshake. Data len = %u\n", datalen);
+      tcp_established(ptcb, ptcphdr, iphdr, mbuf);
+   //   logger(LOG_TCP, LOG_LEVEL_CRITICAL, "dropping this packet as we do not expect data with non zero len on ack of threeway handshake. Data len = %u\n", datalen);
+   //   rte_pktmbuf_free(mbuf);
+   //   reflect_reset(iphdr, ptcphdr);
+   }
 // also increase ack for data. future work.
    return 0;
 }
