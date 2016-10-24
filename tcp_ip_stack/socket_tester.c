@@ -5,6 +5,7 @@
 #include "socket_interface.h"
 #include "socket_tester.h"
 #include <pthread.h>
+#include "unistd.h"
 #include "logger.h"
 
 void *DoWork(void *test)
@@ -12,11 +13,17 @@ void *DoWork(void *test)
    int new_socket = *((int *) test);
    unsigned char buffer[1024];
    int len = 0;
+   int total_send = 5;
+   int count = 1;
    logger(LOG_SOCKET, NORMAL, "coming off accept\n");
    printf("Sending dat at socket %d\n", new_socket);
    const char *data = "Hello World";
-   socket_send(new_socket, (const unsigned char *) data, 12);
-   printf("waiting on socket read\n");
+   while (count <= total_send) {
+      socket_send(new_socket, (const unsigned char *) data, 12);
+      printf("waiting on socket read\n");
+      sleep(1);
+      count ++;
+   }
 #if 0
    socket_read(new_socket, buffer, 10);
    printf("received from socket %s\n", buffer);

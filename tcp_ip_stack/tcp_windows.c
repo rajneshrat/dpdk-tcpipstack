@@ -121,8 +121,9 @@ static int PushDataInQueue(int identifier)
 /// / put assert ;
       }
       memcpy(msg, Buffer, len);
-      if (rte_ring_enqueue(ptcb->socket_tcb_ring_send, msg) < 0) {
-         logger(LOG_TCP, LOG_LEVEL_CRITICAL, "Failed to send message - message discarded for tcb %u\n", identifier);
+      int error = rte_ring_enqueue(ptcb->socket_tcb_ring_send, msg);
+      if (error < 0) {
+         logger(LOG_TCP, LOG_LEVEL_CRITICAL, "Failed to send message - message discarded for tcb %u error no %d\n", identifier, error);
          rte_mempool_put(buffer_message_pool, msg);
       }
    }
@@ -231,6 +232,7 @@ AdjustSendWindow(struct tcb *ptcb, uint32_t AckValue)
    if(head == NULL) {
       Window->Last = NULL;
       ptcb->rto_timer = -1; // stop the timer
+      logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "stopting rto timer. All send.\n");
    }
    Window->Head = head;
    return 1;
