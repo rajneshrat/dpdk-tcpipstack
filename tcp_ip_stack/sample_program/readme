@@ -1,0 +1,15 @@
+the sample code is divided into two parts. one using the current tcp stack and the other using the linux stack.
+both the sample work in pair. you need to run either server or client of one and the opposite of it on other.
+
+compiling -
+
+to compile the sample of linux stack. change dir to linux_stack_sample and run make.
+
+to compile the dpdk stack sample run ./help script at parent folder.
+
+
+testing.
+for linux stack sample run the sample directly. eg ./test1
+
+for dpdk stack sample, change the current sample by changing the file 
+
