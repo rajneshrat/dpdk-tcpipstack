@@ -1,4 +1,5 @@
 #include "tcp_in.h"
+#include "counters.h"
 #include "tcp_tcb.h"
 #include "socket_interface.h"
 #include "types.h"
@@ -119,6 +120,11 @@ socket_accept(int ser_id, struct sock_addr *client_addr)
 int
 socket_send(int ser_id, const unsigned char *message, int len)
 {
+   static int counter_id = -1;
+   if(counter_id == -1) {
+      counter_id = create_counter("socket_sent1");
+   }
+   counter_inc(counter_id, len);
    Socket_Send_Msg *Msg = NULL;
    struct tcb *ptcb = get_tcb_by_identifier(ser_id);
    if (rte_mempool_get(buffer_message_pool,(void **) &Msg) < 0) {
@@ -133,7 +139,14 @@ socket_send(int ser_id, const unsigned char *message, int len)
       printf("Failed to send message - message discarded\n");
       rte_mempool_put(buffer_message_pool, Msg);
    }
-   printf("****** Enqued for  %s and len %d and identifier %d\n",(char *)Msg->m_Data, Msg->m_Len, Msg->m_Identifier);
+   else {
+        static int counter_id = -1;
+        if(counter_id == -1) {
+           counter_id = create_counter("socket_sent");
+        }
+        counter_inc(counter_id, len);
+        printf("****** Enqued len %d and identifier %d\n", Msg->m_Len, Msg->m_Identifier);
+   }
   // sendtcppacket(ptcb, mbuf, message, len);
   // ptcb->send_data(message, len); 
    return 0;
@@ -194,7 +207,7 @@ check_socket_out_queue(void)
          ptcb->state = SYN_SENT; 
       }
       if(msg->m_Msg_Type == SEND_DATA) {
-         printf("****** Received %s and len %d and identifier %d\n",(char *)msg->m_Data, msg->m_Len, msg->m_Identifier);
+         printf("****** Received len %d and identifier %d\n", msg->m_Len, msg->m_Identifier);
          memcpy(message, msg->m_Data, msg->m_Len);
      
          temp = get_tcb_by_identifier(msg->m_Identifier);
@@ -204,6 +217,7 @@ check_socket_out_queue(void)
       // put assert
          }
          ptcb->tcp_flags = TCP_FLAG_ACK; 
+         printf("sending data to tcp\n");
          sendtcpdata(ptcb, message, msg->m_Len);
       }
       rte_mempool_put(buffer_message_pool, msg);

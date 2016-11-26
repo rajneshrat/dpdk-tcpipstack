@@ -84,6 +84,7 @@
 #include "socket_interface.h"
 #include "cli_server.h"
 #include "timer.h"
+#include "counters.h"
 
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
 
@@ -203,6 +204,11 @@ struct rte_mbuf *get_mbuf(void)
 {
    struct rte_mbuf *mbuf = NULL;   
    mbuf = rte_pktmbuf_alloc(l2fwd_pktmbuf_pool);
+   static int counter_id = -1;
+   if(counter_id == -1) {
+      counter_id = create_counter("mbuf_allocated");
+   }
+   counter_inc(counter_id, 1);
    return mbuf;
 }
 

@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib.ticker as ticker
 import time
 import os
 import sys
@@ -39,6 +40,8 @@ def ShowGraph(graph_list):
     i = 0
     for files in graph_list:
         sub_plot = fig.add_subplot(length,1,i)
+        sub_plot.xaxis.set_major_formatter(ticker.FormatStrFormatter('%1f'))
+        sub_plot.set_autoscalex_on(False)
         obj = test()
         obj.sub_plot = sub_plot;
         obj.file_name = files
@@ -61,12 +64,15 @@ def animate(i, obj_list):
             start = 0
         else:
             start = length - 10
+        tot = 0;
+        y = 0;
         for i in range(start, length):
             eachLine = dataArray[i]
             if len(eachLine)>1:
                  x,y = eachLine.split(',')
-            xa.append(int(x))
-            ya.append(int(y))
+            xa.append(i)
+            tot = tot + int(y)
+            ya.append(tot)
             i += 1
         xar.append(xa)
         yar.append(ya)

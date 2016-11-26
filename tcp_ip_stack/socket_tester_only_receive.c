@@ -74,6 +74,8 @@ printf("connected.\n");
 }
 void init_socket_example(int port, uint8_t *ip)
 {
+   sample1();
+   /*
    int i = 0;
    int socket = socket_open(TCP_STREAM);
    struct sock_addr addr;
@@ -96,7 +98,8 @@ void init_socket_example(int port, uint8_t *ip)
       pthread_create(&thread_id, NULL, DoWork, socket_child); 
    }
 #endif
-//   printf("accepted the connection\n");
+//  printf("accepted the connection\n");
+*/
 }
 
 

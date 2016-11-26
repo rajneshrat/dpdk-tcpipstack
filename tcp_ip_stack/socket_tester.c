@@ -79,8 +79,14 @@ printf("connected.\n");
 #endif
 //   printf("accepted the connection\n");
 }
+
+void sample1(int , uint8_t *);
+
 void init_socket_example(int port, uint8_t *ip)
 {
+   logger(LOG_SOCKET, NORMAL, "waiting on accept2\n");
+   sample1(port, ip);
+   /*
    int i = 0;
    int socket = socket_open(TCP_STREAM);
    struct sock_addr addr;
@@ -104,6 +110,7 @@ void init_socket_example(int port, uint8_t *ip)
    }
 #endif
 //   printf("accepted the connection\n");
+*/
 }
 
 

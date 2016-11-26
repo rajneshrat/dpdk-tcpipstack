@@ -21,6 +21,7 @@ ip_in(struct rte_mbuf *mbuf)
                             sizeof(struct ether_hdr)));
     unsigned char mac[6];
     print_arp_table();
+        printf("tcp packet expe\n");
     switch(hdr->next_proto_id) {
     case IPPROTO_TCP :
         if(get_mac(ntohl(hdr->src_addr), mac) == 0) { // remove me, should be inside add_mac
@@ -30,6 +31,7 @@ ip_in(struct rte_mbuf *mbuf)
         tcp_in(mbuf);
         break;
     default:
+        printf("unkonwn layer 4 packet\n");
         break ;
     }
    return 0;

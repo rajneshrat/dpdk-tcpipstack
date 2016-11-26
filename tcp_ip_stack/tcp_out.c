@@ -5,6 +5,7 @@
 #include <rte_ip.h>
 #include <rte_tcp.h>
 
+#include "counters.h"
 #include <stdio.h>
 #include "tcp_in.h"
 #include "tcp_tcb.h"
@@ -111,6 +112,12 @@ void send_reset(struct ipv4_hdr *ip_hdr, struct tcp_hdr *t_hdr)
 
 void sendtcpdata(struct tcb *ptcb, unsigned char *data, int len)
 {
+   printf("Sending tcp data\n");
+   static int counter_id = -1;
+   if(counter_id == -1) {
+      counter_id = create_counter("tcp_sent");
+   }
+   counter_inc(counter_id, len);
    //uint8_t tcp_len = 0x50 + add_mss_option(mbuf, 1300);// + add_winscale_option(mbuf, 7);
    struct rte_mbuf *mbuf = get_mbuf(); // remove mbuf from parameters.
    uint8_t data_len = add_tcp_data(mbuf, data, len);
