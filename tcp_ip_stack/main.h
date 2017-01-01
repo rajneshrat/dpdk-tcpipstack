@@ -41,6 +41,7 @@
 #endif
 #include <rte_mbuf.h>
 
+#define MBUF_BUFFER_LEN 2000
 int MAIN(int argc, char **argv);
 
 struct rte_mbuf *get_mbuf(void);

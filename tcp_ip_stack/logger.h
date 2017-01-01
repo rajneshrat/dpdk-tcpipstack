@@ -29,6 +29,7 @@ struct LoggerFeature {
    uint8_t Enable;
 };
 
+#define DATA_SEND_DEBUG_FILE "/tmp/data_debugger"
 extern struct LoggerFeature *LogFeature;
 void InitLogger(void);
 void EnableTrace(FEATURE Feature, TRACE_LEVEL Level);

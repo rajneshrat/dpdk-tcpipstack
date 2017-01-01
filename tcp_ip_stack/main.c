@@ -88,7 +88,7 @@
 
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
 
-#define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_SIZE (MBUF_BUFFER_LEN + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 #define NB_MBUF   8192
 
 /*
@@ -271,6 +271,7 @@ l2fwd_main_loop(void)
  //     ip[0] = 192;
   //    ip[1] = 168;
   //    ip[2] = 78;
+      init_counters();
       if(1) { // test accept otherwise test connect
   //       ip[3] = 2;
          init_socket_example(23, ip); // this call is blocking call. 

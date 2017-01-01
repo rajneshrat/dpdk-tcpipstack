@@ -6,6 +6,8 @@
 #include "tcp_common.h"
 #include <pthread.h>
 #include <rte_mempool.h>
+#include <rte_ring.h>
+#include <rte_mempool.h>
 #include "main.h"
 #include "tcp_out.h"
 #include <unistd.h>
@@ -120,15 +122,19 @@ socket_accept(int ser_id, struct sock_addr *client_addr)
 int
 socket_send(int ser_id, const unsigned char *message, int len)
 {
-   static int counter_id = -1;
-   if(counter_id == -1) {
-      counter_id = create_counter("socket_sent1");
-   }
-   counter_inc(counter_id, len);
    Socket_Send_Msg *Msg = NULL;
    struct tcb *ptcb = get_tcb_by_identifier(ser_id);
+   {
+        static int counter_id = -1;
+        if(counter_id == -1) {
+           counter_id = create_counter("socket_ava_msg_buffer");
+        }
+        unsigned int buf_av =  rte_mempool_count(buffer_message_pool);
+        counter_abs(counter_id, buf_av);
+   }
    if (rte_mempool_get(buffer_message_pool,(void **) &Msg) < 0) {
        printf ("Failed to get message buffer\n");
+       return -1;
 /// / put assert ;
    }
    Msg->m_Identifier = ser_id;
@@ -137,6 +143,11 @@ socket_send(int ser_id, const unsigned char *message, int len)
    memcpy(Msg->m_Data, message, len);
    if (rte_ring_enqueue(ptcb->tcb_socket_ring_send, Msg) < 0) {
       printf("Failed to send message - message discarded\n");
+      static int counter_id = -1;
+      if(counter_id == -1) {
+         counter_id = create_counter("socket_sent_failed");
+      }
+      counter_inc(counter_id, len);
       rte_mempool_put(buffer_message_pool, Msg);
    }
    else {
@@ -145,7 +156,7 @@ socket_send(int ser_id, const unsigned char *message, int len)
            counter_id = create_counter("socket_sent");
         }
         counter_inc(counter_id, len);
-        printf("****** Enqued len %d and identifier %d\n", Msg->m_Len, Msg->m_Identifier);
+        printf("****** Enqued len %d and identifier %d data %s\n", Msg->m_Len, Msg->m_Identifier, Msg->m_Data);
    }
   // sendtcppacket(ptcb, mbuf, message, len);
   // ptcb->send_data(message, len); 
@@ -155,6 +166,7 @@ socket_send(int ser_id, const unsigned char *message, int len)
 extern struct tcb *tcbs[];
 extern int Ntcb;
 extern pthread_mutex_t tcb_alloc_mutex;
+// this function takes the msg from socket queue and send the data to tcp.
 int
 check_socket_out_queue(void)
 {
@@ -175,6 +187,13 @@ check_socket_out_queue(void)
          continue;
       }
       int num = rte_ring_dequeue(ptcb->tcb_socket_ring_recv, (void **)&msg);
+      {
+         static int counter_id = -1;
+         if(counter_id == -1) {
+            counter_id = create_counter("buf_ring_deque_call");
+         }
+         counter_inc(counter_id, 1);
+      }
       if(num < 0) {
          if(ptcb->need_ack_now) {
             logger(LOG_TCP, LOG_LEVEL_NORMAL, "sending immidiate ack for tcb %u\n", ptcb->identifier);
@@ -185,11 +204,18 @@ check_socket_out_queue(void)
          }
          continue;
       }
+      {
+         static int counter_id = -1;
+         if(counter_id == -1) {
+            counter_id = create_counter("buffer_msg_pool_deque");
+         }
+         counter_inc(counter_id, 1);
+      }
       if(msg->m_Msg_Type == SOCKET_CLOSE) {
          temp = get_tcb_by_identifier(msg->m_Identifier);
          if(temp != ptcb) {
             printf ("Everything screewed at tcb'\n");
-            exit(0);
+            assert(0);
       // put assert
          }
          ptcb->tcp_flags = TCP_FLAG_ACK | TCP_FLAG_FIN; // no problem in acking
@@ -200,24 +226,28 @@ check_socket_out_queue(void)
          temp = get_tcb_by_identifier(msg->m_Identifier);
          if(temp != ptcb) {
             printf ("Everything screewed at tcb'\n");
-            exit(0);
+            assert(0);
       // put assert
          }
          sendsyn(ptcb);
          ptcb->state = SYN_SENT; 
       }
       if(msg->m_Msg_Type == SEND_DATA) {
-         printf("****** Received len %d and identifier %d\n", msg->m_Len, msg->m_Identifier);
+         FILE *fp = fopen(DATA_SEND_DEBUG_FILE, "a");
+         fprintf(fp, "****** Received len %d and identifier %d and data %s\n", msg->m_Len, msg->m_Identifier, msg->m_Data);
          memcpy(message, msg->m_Data, msg->m_Len);
      
          temp = get_tcb_by_identifier(msg->m_Identifier);
          if(temp != ptcb) {
             printf ("Everything screewed at tcb'\n");
-            exit(0);
+            assert(0);
       // put assert
          }
          ptcb->tcp_flags = TCP_FLAG_ACK; 
-         printf("sending data to tcp\n");
+         message[msg->m_Len] = '\n' ; // this is only for debugging;
+
+         fprintf(fp, "sending data to tcp %s\n", message);
+         fclose(fp);
          sendtcpdata(ptcb, message, msg->m_Len);
       }
       rte_mempool_put(buffer_message_pool, msg);

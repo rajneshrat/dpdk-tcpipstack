@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <rte_ip.h>
 #include "etherout.h"
+#include "counters.h"
 #include <stdio.h>
 #include "arp.h"
 #include "main.h"
@@ -90,6 +91,22 @@ ether_out(unsigned char *dst_mac, char *src_mac, uint16_t ether_type, struct rte
 //   }
 // fix this this should be automatically detect the network interface id.
    send_packet_out(mbuf, 0);
+   static int counter_id = -1;
+   if(counter_id == -1) {
+      counter_id = create_counter("sent_rate");
+   }
+   int data_len = rte_pktmbuf_data_len(mbuf);
+
+   counter_abs(counter_id, data_len);
+   {
+      static int counter_id = -1;
+      if(counter_id == -1) {
+         counter_id = create_counter("wire_sent");
+      }
+      int data_len = rte_pktmbuf_data_len(mbuf);
+ 
+      counter_inc(counter_id, data_len);
+   }
    (void) src_mac; // jusat to avoid warning
    src_mac = NULL;
    return 0;

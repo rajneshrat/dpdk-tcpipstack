@@ -36,8 +36,29 @@ uint8_t add_winscale_option(struct rte_mbuf *mbuf, uint8_t value)
 
 uint8_t add_tcp_data(struct rte_mbuf *mbuf, unsigned char *data, uint8_t len)
 {
-   char *src = (char *)rte_pktmbuf_prepend (mbuf, len);
-   memcpy(src, data, len);
+   //char *src = (char *)rte_pktmbuf_prepend (mbuf, len);
+   if((MBUF_BUFFER_LEN - rte_pktmbuf_headroom(mbuf) - rte_pktmbuf_tailroom(mbuf)) < len) {
+        logger(LOG_TCP, CRITICAL, "critical overflow **** buffer touching its limit.\n");
+        logger(LOG_TCP, CRITICAL, "total ava %d, head %d, tail %d, len %d, \n", MBUF_BUFFER_LEN, rte_pktmbuf_headroom(mbuf), rte_pktmbuf_tailroom(mbuf), len);
+   }
+   if(MBUF_BUFFER_LEN) {
+        //char *src = rte_pktmbuf_mtod(mbuf, char *);
+        // at starting we have everything in tail. by append we move tail and get the space for our new data. Do not use mtod to put data. call append and then fill data.
+        char *src = rte_pktmbuf_append (mbuf, len); // always pad the option to make total size multiple of 4.
+        if(src == NULL) {
+            assert(0);
+        }
+        memcpy(src, data, len);
+        if(len > 0) {
+             FILE *fp = fopen(DATA_SEND_DEBUG_FILE, "a");
+             data[len] = '\0'; // only for debuuging.
+             fprintf(fp, "added %s to mbuf\n", src);
+             fclose(fp); 
+        }
+   }
+   else{
+        assert(0);
+   }
    return len;
 }
 
@@ -126,7 +147,7 @@ void sendtcpdata(struct tcb *ptcb, unsigned char *data, int len)
    uint8_t pad = (tcp_len%4) ? 4 - (tcp_len % 4): 0;
    tcp_len += pad;
    logger(LOG_TCP, NORMAL, "padding option %d for tcb %u\n",  pad, ptcb->identifier); 
-   char *nop = rte_pktmbuf_append (mbuf, pad); // always pad the option to make total size multiple of 4.
+   char *nop = rte_pktmbuf_prepend (mbuf, pad); // always pad the option to make total size multiple of 4.
    memset(nop, 0, pad);
    tcp_len = (tcp_len + 3) / 4;  // len is in multiple of 4 bytes;  20  will be 5
    tcp_len = tcp_len << 4; // len has upper 4 bits position in tcp header.
