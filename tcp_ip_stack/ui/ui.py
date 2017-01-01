@@ -9,6 +9,7 @@ from os import listdir
 from os.path import isfile, join
 
 CountersFolder = "samples"
+XLENGTH = 10
 class test:
     sub_plot = None
     file_name = ""
@@ -60,10 +61,10 @@ def animate(i, obj_list):
         xa = []
         ya = []
         length = len(dataArray)
-        if length < 10:
+        if length < XLENGTH:
             start = 0
         else:
-            start = length - 10
+            start = length - XLENGTH
         tot = 0;
         y = 0;
         for i in range(start, length):
@@ -71,7 +72,8 @@ def animate(i, obj_list):
             if len(eachLine)>1:
                  x,y = eachLine.split(',')
             xa.append(i)
-            tot = tot + int(y)
+            #tot = tot + int(y)
+            tot = int(y)
             ya.append(tot)
             i += 1
         xar.append(xa)

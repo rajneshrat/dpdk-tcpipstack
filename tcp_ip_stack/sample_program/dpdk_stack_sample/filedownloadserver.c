@@ -48,6 +48,7 @@ int sample1(int port, uint8_t *ip)
     }
     while (fgets(buf,1000, ptr_file)!=NULL){
         printf("sending file\n");
+        printf ("sending %s\n", buf);
         socket_send(connfd, (const unsigned char*)buf, strlen(buf));
     }
     fclose(ptr_file);

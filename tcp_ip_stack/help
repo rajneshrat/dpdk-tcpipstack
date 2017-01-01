@@ -5,7 +5,13 @@ export RTE_TARGET=x86_64-native-linuxapp-gcc
 #export RTE_SDK=/home/rajnesh/Desktop/dpdk-1.6.0r2
 export RTE_SDK=/home/rajnesh/dpdk/dpdk-2.2.0
 
-make
+if [[ $1 -eq "r" ]]
+then
+make clean
+make || exit
+else
+make || exit
+fi
 
 if [ $? != 0 ]
 then
@@ -21,5 +27,11 @@ echo 128 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
 
 # without huge page l2fwd will not work.
 
-./build/tcp_stack -c 0xf -n 4 -- -p 0x3
+if [[ $1 -eq "0" ]]
+then
+./build/tcp_stack -c 0xf -n 4 -- -p 0x3 &
+else
+gdb ./build/tcp_stack -c 0xf -n 4 -- -p 0x3 &
+fi
+python ui/ui.py
 #./build/tcp_stack -c 0xf -n 4 -- -p 0x1
