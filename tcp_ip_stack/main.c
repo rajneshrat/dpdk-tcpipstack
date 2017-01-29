@@ -85,6 +85,7 @@
 #include "cli_server.h"
 #include "timer.h"
 #include "counters.h"
+#include "debug.h"
 
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
 
@@ -204,6 +205,7 @@ struct rte_mbuf *get_mbuf(void)
 {
    struct rte_mbuf *mbuf = NULL;   
    mbuf = rte_pktmbuf_alloc(l2fwd_pktmbuf_pool);
+   mbuf->udata64 = 0;
    static int counter_id = -1;
    if(counter_id == -1) {
       counter_id = create_counter("mbuf_allocated");
@@ -213,22 +215,38 @@ struct rte_mbuf *get_mbuf(void)
 }
 
 int
-send_packet_out(struct rte_mbuf *mbuf, int port)
+send_packet_out(struct rte_mbuf *mbuf, int port, int free_mbuf)
 {
    static int count = 0;
    count ++;
    
    static struct rte_mbuf *last = NULL;
    if(last== mbuf) {
-      printf("Sending same buf again.\n");
+      logger(LOG_ETHER, LOG_LEVEL_NORMAL, "Sending same buf again.\n");
    }
    last = mbuf;
    struct rte_mbuf **mbuf_arr = malloc(sizeof(struct rte_mbuf*) * 2);
    if(mbuf_arr == NULL) {
-      printf("mbuf array is null\n");
+      logger(LOG_ETHER, LOG_LEVEL_NORMAL, "mbuf array is null\n");
    }
-   mbuf_arr[0] = mbuf;
-   //printf("sending port from %d\n", port);
+   //logger(LOG_ETHER, LOG_LEVEL_NORMAL, "sending port from %d\n", port);
+   // this buf will be released only when we will receive the ack of this.
+   struct rte_mbuf *new_mbuf = mbuf;
+   // let tx delete this mbuf, we have taken copy of it.
+   if( 0 && (free_mbuf == 1) ) {
+       uint16_t last_ref = rte_mbuf_refcnt_read (mbuf);
+     //  rte_mbuf_refcnt_set (mbuf, last_ref + 1);
+       new_mbuf = rte_pktmbuf_clone(mbuf, l2fwd_pktmbuf_pool); 
+       logger(LOG_ETHER, LOG_LEVEL_NORMAL, "updating the reference of mbuf  %p from %u to %u\n", new_mbuf, last_ref, rte_mbuf_refcnt_read (mbuf));
+       if(new_mbuf == NULL) {
+          logger(LOG_ETHER, LOG_LEVEL_NORMAL, "failed to clone mbuf, will try later.\n");
+          return 0;
+       }
+   }
+   mbuf_arr[0] = new_mbuf;
+   char buf[1024];
+    DumpMbufInBuf(mbuf, buf);
+          logger(LOG_ETHER, LOG_LEVEL_NORMAL, "packet sent to wire  %p  with %s\n", mbuf, buf);
    int total_packets_sent = rte_eth_tx_burst(PORT_CONFIGURE, 0, &mbuf_arr[0], 1);
    (void) port;
    //int total_packets_sent = rte_eth_tx_burst(port, 0, &mbuf_arr[0], 1);
@@ -316,7 +334,7 @@ l2fwd_main_loop(void)
 		nb_rx = rte_eth_rx_burst((uint8_t) portid, 0,
 		//nb_rx = rte_eth_rx_burst((uint8_t) 1, 0,
 						 pkts_burst, MAX_PKT_BURST);
-  //  printf(" packets re %d port %d\n", nb_rx, portid);
+  //  logger(LOG_ETHER, LOG_LEVEL_NORMAL, " packets re %d port %d\n", nb_rx, portid);
 			if(nb_rx) {
             for(i=0;i<nb_rx;i++) {
 //               pkts_burst[i].user_data = malloc(sizeof(int));

@@ -39,10 +39,10 @@ void InitSocketInterface(void)
 //   socket_tcb_ring_recv = rte_ring_lookup(TCB_TO_SOCKET);
    buffer_message_pool = rte_mempool_lookup(_MSG_POOL);
    if(buffer_message_pool == NULL) {
-      printf("ERROR **** socket tcb Message pool failed\n");
+      logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "ERROR **** socket tcb Message pool failed\n");
    }
    else {
-      printf("socket tcb recv side OK.\n");
+      logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "socket tcb recv side OK.\n");
    }
 }
 
@@ -54,7 +54,7 @@ socket_open(STREAM_TYPE stream)
    (void) stream;
 // future set this as default instead of 2000.
    ptcb = alloc_tcb(2000, 2000);
-   printf("socket open allocated tcb %p\n", ptcb);
+   logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "socket open allocated tcb %p\n", ptcb);
    return ptcb->identifier; 
 }
 
@@ -71,7 +71,7 @@ socket_bind(int identifier, struct sock_addr *serv_addr)
    struct tcb *ptcb;
 
    ptcb = (struct tcb *) get_tcb_by_identifier(identifier);
-   printf("socket bind received tcb %p\n", ptcb);
+   logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "socket bind received tcb %p\n", ptcb);
    if(ptcb == NULL) {
       return -1; // use enum here
    }
@@ -133,7 +133,7 @@ socket_send(int ser_id, const unsigned char *message, int len)
         counter_abs(counter_id, buf_av);
    }
    if (rte_mempool_get(buffer_message_pool,(void **) &Msg) < 0) {
-       printf ("Failed to get message buffer\n");
+       logger (LOG_SOCKET, LOG_LEVEL_CRITICAL, "Failed to get message buffer\n");
        return -1;
 /// / put assert ;
    }
@@ -142,7 +142,7 @@ socket_send(int ser_id, const unsigned char *message, int len)
    Msg->m_Msg_Type = SEND_DATA;
    memcpy(Msg->m_Data, message, len);
    if (rte_ring_enqueue(ptcb->tcb_socket_ring_send, Msg) < 0) {
-      printf("Failed to send message - message discarded\n");
+      logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "Failed to send message - message discarded\n");
       static int counter_id = -1;
       if(counter_id == -1) {
          counter_id = create_counter("socket_sent_failed");
@@ -156,7 +156,7 @@ socket_send(int ser_id, const unsigned char *message, int len)
            counter_id = create_counter("socket_sent");
         }
         counter_inc(counter_id, len);
-        printf("****** Enqued len %d and identifier %d data %s\n", Msg->m_Len, Msg->m_Identifier, Msg->m_Data);
+        logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "****** Enqued len %d and identifier %d data %s\n", Msg->m_Len, Msg->m_Identifier, Msg->m_Data);
    }
   // sendtcppacket(ptcb, mbuf, message, len);
   // ptcb->send_data(message, len); 
@@ -258,28 +258,21 @@ check_socket_out_queue(void)
 int
 socket_read(int ser_id, char *buffer, int len)
 {
-// check all corner case before going further
-//   assert(ptcb->WaitingOnRead == 0);
-   struct tcb *ptcb = NULL;
-   ptcb = get_tcb_by_identifier(ser_id);
- //  if(ptcb->WaitingOnAccept) {
-   //   return 0;
-      // don't allow multiple accepts hold on same socket.
-  // }
-   printf("scoket read called for identifier %d\n", ser_id);
-   pthread_mutex_lock(&(ptcb->mutex));
-   ptcb->WaitingOnRead = 1;
-   pthread_cond_wait(&(ptcb->condAccept), &(ptcb->mutex));
-   if(len < ptcb->read_buffer_len) {
-      printf("ERROR: Failed to get all buffer data from read.\n");
-      memcpy(buffer, ptcb->read_buffer, len); 
-   }   
-   else 
-      memcpy(buffer, ptcb->read_buffer, ptcb->read_buffer_len); 
-   ptcb->WaitingOnRead = 0;
-   pthread_mutex_unlock(&(ptcb->mutex));
-   
-   return 10; 
+   struct tcp_data *msg;
+   int total_data_recv = 0;
+   struct tcb *ptcb = get_tcb_by_identifier(ser_id);
+   while(total_data_recv < len) {
+       while (rte_ring_dequeue(ptcb->socket_tcb_ring_recv, (void **)&msg) < 0){
+          usleep(5);
+          continue;
+       }
+        memcpy(buffer + total_data_recv, msg->data, msg->len);
+        total_data_recv += msg->len;
+        rte_mempool_put(buffer_message_pool, msg);
+   }
+//   printf("Received %s and len %d\n",(char *)msg, strlen(msg));
+ 
+   return total_data_recv;//GetData(ser_id, buffer);
 }
 
 int socket_connect(int identifier, struct sock_addr *client_addr)
@@ -300,17 +293,17 @@ int socket_connect(int identifier, struct sock_addr *client_addr)
    for(i=0; i<4; i++) {
       DestIp |= ip[i] << i*8;
    }
-   printf("opening connection connect call\n");
+   logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "opening connection connect call\n");
    Socket_Send_Msg *Msg = NULL;
    struct tcb *ptcb = get_tcb_by_identifier(identifier);
    if (rte_mempool_get(buffer_message_pool,(void **) &Msg) < 0) {
-       printf ("Failed to get message buffer\n");
+       logger (LOG_SOCKET, LOG_LEVEL_CRITICAL, "Failed to get message buffer\n");
 /// / put assert ;
    }
    Msg->m_Identifier = identifier;
    Msg->m_Msg_Type = CONNECTION_OPEN;
    if (rte_ring_enqueue(ptcb->tcb_socket_ring_send, Msg) < 0) {
-      printf("Failed to send message - message discarded\n");
+      logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "Failed to send message - message discarded\n");
       rte_mempool_put(buffer_message_pool, Msg);
    }
    ptcb->ipv4_src = htonl(client_addr->ip); 
@@ -330,33 +323,35 @@ int socket_connect(int identifier, struct sock_addr *client_addr)
 
 int socket_read_nonblock(int ser_id, unsigned char *buffer)
 {
-   void *msg;
+   struct tcp_data *msg;
+   int total_data_recv = 0;
    struct tcb *ptcb = get_tcb_by_identifier(ser_id);
-   while (rte_ring_dequeue(ptcb->socket_tcb_ring_recv, &msg) < 0){
-      usleep(5);
-      continue;
-   }
+       while (rte_ring_dequeue(ptcb->socket_tcb_ring_recv, (void **)&msg) < 0){
+          usleep(5);
+          continue;
+       }
+        memcpy(buffer + total_data_recv, msg->data, msg->len);
+        total_data_recv += msg->len;
+        rte_mempool_put(buffer_message_pool, msg);
 //   printf("Received %s and len %d\n",(char *)msg, strlen(msg));
-   memcpy(buffer, msg, strlen(msg));
-   rte_mempool_put(buffer_message_pool, msg);
  
-   return strlen(msg);//GetData(ser_id, buffer);
+   return total_data_recv;//GetData(ser_id, buffer);
 }
 
 int
 socket_close(int identifier)
 {
-   printf("closing tcb\n");
+   logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "closing tcb\n");
    Socket_Send_Msg *Msg = NULL;
    struct tcb *ptcb = get_tcb_by_identifier(identifier);
    if (rte_mempool_get(buffer_message_pool, (void **)&Msg) < 0) {
-       printf ("Failed to get message buffer\n");
+       logger (LOG_SOCKET, LOG_LEVEL_CRITICAL, "Failed to get message buffer\n");
 /// / put assert ;
    }
    Msg->m_Identifier = identifier;
    Msg->m_Msg_Type = SOCKET_CLOSE;
    if (rte_ring_enqueue(ptcb->tcb_socket_ring_send, Msg) < 0) {
-      printf("Failed to send message - message discarded\n");
+      logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "Failed to send message - message discarded\n");
       rte_mempool_put(buffer_message_pool, Msg);
    }
  //  remove_tcb(identifier);

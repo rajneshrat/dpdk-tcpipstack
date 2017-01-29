@@ -9,6 +9,8 @@ typedef enum {
    LOG_ARP,
    LOG_IP,
    LOG_TCP,
+   LOG_ETHER,
+   LOG_TCP_STATE,
    LOG_TCP_WINDOW,
    LOG_SOCKET,
    LOG_TCB,

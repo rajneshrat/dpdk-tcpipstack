@@ -173,6 +173,7 @@ print_add_in_buf(uint32_t ip_add, char *buffer)
          len += sprintf(buffer + len, ".");
       }
    }
+   buffer[len] = '\0';
    return len;
 }
 
@@ -208,7 +209,7 @@ send_arp(struct arp *arp_pkt)
       memcpy(&eth->s_addr.addr_bytes[0], arp_pkt->src_hw_add, sizeof(arp_pkt->hw_len));
    }
 // fix the below, port should be dfrom routing.
-   send_packet_out(mbuf, 0);
+   send_packet_out(mbuf, 0, 0);
 }
 
 int

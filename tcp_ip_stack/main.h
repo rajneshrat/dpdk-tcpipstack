@@ -46,6 +46,6 @@ int MAIN(int argc, char **argv);
 
 struct rte_mbuf *get_mbuf(void);
 int GetTotalInterfaces(void);
-int send_packet_out(struct rte_mbuf *mbuf, int port);
+int send_packet_out(struct rte_mbuf *mbuf, int port, int free_mbuf);
 
 #endif /* _MAIN_H_ */

@@ -61,7 +61,7 @@ int tcp_in(struct rte_mbuf *mbuf)
     //  sendfin(ptcb);  // future, remove it from here.
    }
   
-   printf("tcb identifier = %d\n", ptcb->identifier);
+   //printf("tcb identifier = %d\n", ptcb->identifier);
    if(tcpok(ptcb, mbuf)) {
       if(ntohl(ptcphdr->sent_seq) > ptcb->max_seq_received) {
          ptcb->max_seq_received = ntohl(ptcphdr->sent_seq); 
@@ -69,12 +69,13 @@ int tcp_in(struct rte_mbuf *mbuf)
       logger(LOG_TCP, NORMAL, "[RECEIVED TCP PACKET] received tcp packet seq %u ack %u for tcb %u\n", ntohl(ptcphdr->sent_seq), ntohl(ptcphdr->recv_ack), ptcb->identifier);
       // remove the pair from send window and if all are done adjust the rto timer.
       AdjustSendWindow(ptcb, ntohl(ptcphdr->recv_ack));
-      tcpswitch[ptcb->state](ptcb, ptcphdr, hdr, mbuf);
+      tcpswitch[ptcb->state](ptcb, ptcphdr, hdr, mbuf); // this function will take care mbuf, no need to free it now.
          //rte_pktmbuf_free(mbuf) ;// higher layer let decide this
       // need to fix check fro
       //(tcpswitch[1])(ptcb, mbuf);
    }
    else {
+        rte_pktmbuf_free(mbuf);
    //   logger(TCP, NORMAL, "sending syn-ack packet\n");
      // sendsynack(ptcb);
    // send ack future work

@@ -45,7 +45,7 @@ APP = tcp_stack
 VPATH=sample_program:sample_program/dpdk_stack_sample
 #VPATH += dpdk_stack_sample
 # all source are stored in SRCS-y
-SRCS-y := sample_program/run_sample.c sample_program/dpdk_stack_sample/filedownloadserver.c counters.c socket_tester.c timer.c tcp_windows.c cli_server.c logger.c main.c  etherin.c etherout.c ip.c tcp_in.c tcp_tcb.c tcp_out.c tcp_states.c socket_interface.c ether.c arp.c
+SRCS-y := sample_program/run_sample.c sample_program/dpdk_stack_sample/filedownloadserver.c debug.c counters.c socket_tester.c timer.c tcp_windows.c cli_server.c logger.c main.c  etherin.c etherout.c ip.c tcp_in.c tcp_tcb.c tcp_out.c tcp_states.c socket_interface.c ether.c arp.c
 
 CFLAGS += -O0
 CFLAGS += -g

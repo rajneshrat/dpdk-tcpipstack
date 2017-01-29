@@ -12,6 +12,7 @@
 #include "ip.h"
 #include "tcp_in.h"
 #include "etherout.h"
+#include "debug.h"
 
 int
 ip_in(struct rte_mbuf *mbuf)
@@ -21,17 +22,18 @@ ip_in(struct rte_mbuf *mbuf)
                             sizeof(struct ether_hdr)));
     unsigned char mac[6];
     print_arp_table();
-        printf("tcp packet expe\n");
+        //printf("tcp packet expe\n");
     switch(hdr->next_proto_id) {
     case IPPROTO_TCP :
         if(get_mac(ntohl(hdr->src_addr), mac) == 0) { // remove me, should be inside add_mac
             add_mac(ntohl(hdr->src_addr), eth->s_addr.addr_bytes);
         }
-        printf("tcp packet\n");
+        //printf("tcp packet\n");
         tcp_in(mbuf);
         break;
     default:
-        printf("unkonwn layer 4 packet\n");
+        //printf("unkonwn layer 4 packet\n");
+		rte_pktmbuf_free(mbuf);
         break ;
     }
    return 0;
@@ -60,7 +62,27 @@ ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf, struct tcp_hdr *ptcphdr, uint8_t
 {
     //printf("head room3 = %d\n", rte_pktmbuf_headroom(mbuf));
 //    struct tcp_hdr *ptcphdr =  rte_pktmbuf_mtod(mbuf, struct tcp_hdr *);  
-    struct ipv4_hdr *hdr = (struct ipv4_hdr *)rte_pktmbuf_prepend (mbuf, sizeof(struct ipv4_hdr));
+//   struct tcp_hdr *ptcphdr = (struct tcp_hdr *)rte_pktmbuf_mtod(mbuf, struct tcp_hdr *);
+   struct ipv4_hdr *hdr = NULL;
+   if(mbuf->udata64 & 0x1) {
+      if(mbuf->udata64 & 0x4) {
+        logger(LOG_IP, LOG_LEVEL_CRITICAL, "this is old mbuf doing mtod instead of adding new\n");
+        hdr =  (struct ipv4_hdr *)((rte_pktmbuf_mtod(mbuf, unsigned char *) +
+                            sizeof(struct ether_hdr)));
+      }
+      else {
+         assert(mbuf->udata64 & 0x2); // 2 is for ip header.
+        logger(LOG_IP, LOG_LEVEL_CRITICAL, "this is old mbuf doing mtod instead of adding new but has only ip hdr\n");
+        hdr =  (struct ipv4_hdr *)(rte_pktmbuf_mtod(mbuf, unsigned char *));
+      }
+        logger(LOG_IP, LOG_LEVEL_CRITICAL, "dumping ip hdr at before pushing to ethernet queue\n");
+
+        //DumpIpHdr(hdr);
+   }
+   else {
+      //printf("this is new mbuf adding new space for ip hdr\n");
+        hdr = (struct ipv4_hdr *)rte_pktmbuf_prepend (mbuf, sizeof(struct ipv4_hdr));
+   }
     //printf("head room4 = %d\n", rte_pktmbuf_headroom(mbuf));
     struct pseudo_tcp_hdr *pseudohdr = malloc (sizeof (struct pseudo_tcp_hdr));
     memset(pseudohdr, 0, sizeof(struct pseudo_tcp_hdr));
@@ -93,6 +115,11 @@ ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf, struct tcp_hdr *ptcphdr, uint8_t
     memcpy(temp + sizeof(struct pseudo_tcp_hdr), ptcphdr, tcp_len + data_len);
     ptcphdr->cksum = htons(calculate_checksum(temp, sizeof(struct pseudo_tcp_hdr) + tcp_len + data_len));
 //    ptcphdr->cksum = get_ipv4_psd_sum(hdr); 
+    //printf("verifying tcp and ip before pushing to ether\n");
+  //  DumpMbuf(mbuf);
+    //DumpTcb(ptcb);
+    //DumpIpHdr(hdr);
+
     EnqueueMBuf(mbuf);
   //  struct rte_mbuf **pbuf;
 //    *pbuf = mbuf;

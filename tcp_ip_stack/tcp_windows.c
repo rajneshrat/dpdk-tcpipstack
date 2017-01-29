@@ -2,6 +2,7 @@
 #include "tcp_tcb.h"
 #include "tcp.h"
 #include "logger.h"
+#include "debug.h"
 
 //static struct rte_ring *socket_tcb_ring_send;
 
@@ -20,10 +21,10 @@ void InitSocketTcbRing(void)
             NULL, NULL, NULL, NULL,
             SOCKET_ID_ANY, 0);
    if(buffer_message_pool == NULL) {
-      printf("ERROR **** socket tcb Message pool send side failed\n");
+      //printf("ERROR **** socket tcb Message pool send side failed\n");
    }
    else {
-      printf("socket tcb send side OK.\n");
+      //printf("socket tcb send side OK.\n");
    }
 }
 
@@ -109,18 +110,21 @@ uint32_t AdjustPair(ReceiveWindow *Window, uint32_t StartSeqNumber, uint16_t Len
 
 static int PushDataInQueue(int identifier)
 {
-   unsigned char Buffer[2000];
+   unsigned char Buffer[1000];
    // check for buffer overflow.
    int len = 0;
    struct tcb *ptcb = get_tcb_by_identifier(identifier);
-   if((len = GetData(identifier, Buffer, 2000))) {
-      void *msg = NULL;
+   if((len = GetData(identifier, Buffer, 1000))) {
+      struct tcp_data *msg = NULL;
       logger(LOG_TCP, LOG_LEVEL_NORMAL, "Pushing data of len %u to tcb %u\n", len, identifier);
-      if (rte_mempool_get(buffer_message_pool, &msg) < 0) {
+      if (rte_mempool_get(buffer_message_pool, (void **) &msg) < 0) {
          logger (LOG_TCP, LOG_LEVEL_CRITICAL, "Failed to get message buffer for tcb %u\n", identifier);
 /// / put assert ;
       }
-      memcpy(msg, Buffer, len);
+      msg->len = len;
+      assert(sizeof(len) < 16);
+      msg->data = (char *) msg + 16;
+      memcpy(msg->data, Buffer, len);
       int error = rte_ring_enqueue(ptcb->socket_tcb_ring_send, msg);
       if (error < 0) {
          logger(LOG_TCP, LOG_LEVEL_CRITICAL, "Failed to send message - message discarded for tcb %u error no %d\n", identifier, error);
@@ -183,7 +187,7 @@ int GetData(int identifier, unsigned char *Buffer, uint32_t len)
 int SendAck(void)
 {
    assert(0); // remove this function at all.
-   printf("Sending Syn Ack\n");
+   //printf("Sending Syn Ack\n");
    return 0;
 
 }
@@ -199,34 +203,84 @@ GetFirstUnAckedPacket(struct tcb *ptcb, int *data_len, struct rte_mbuf **mbuf)
    struct SendSeqPair *temp = Window->Head;
    *data_len = temp->m_DataLen;
    *mbuf = temp->m_mbuf; 
-   rte_pktmbuf_refcnt_update(temp->m_mbuf, 1);
+   rte_pktmbuf_refcnt_update(*mbuf, 1); 
    return 0;
 }
 
+/*
+This is as per RFC of RTO
+
+The following is the RECOMMENDED algorithm for managing the
+   retransmission timer:
+
+   (5.1) Every time a packet containing data is sent (including a
+      retransmission), if the timer is not running, start it running
+    so that it will expire after RTO seconds (for the current value
+               of RTO).
+
+   (5.2) When all outstanding data has been acknowledged, turn off the
+    retransmission timer.
+
+   (5.3) When an ACK is received that acknowledges new data, restart the
+          retransmission timer so that it will expire after RTO seconds
+          (for the current value of RTO).
+*/
+
+// this reset the rto timer if we have received ack of unacked sent data. Also remove the packet from retransmitting if we have received ack of it.
 int
 AdjustSendWindow(struct tcb *ptcb, uint32_t AckValue)
 {
+   logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "received ack for %u\n", AckValue);
    SendWindow *Window = ptcb->SendWindow;
    if(Window->Head == NULL) {
       assert(ptcb->rto_timer == -1); // rto timer must be stop
       return 0;
       // no data to ack. SendWindow is empty.
    }
-   if(Window->Head->m_StartSeqNumber >= AckValue){
-      assert(ptcb->rto_timer == -1); // rto timer must be stop
+   if(Window->Head->m_StartSeqNumber > AckValue){
+//      assert(ptcb->rto_timer == -1); // rto timer must be stop
+      // nothing to delete now. We areve already received this ack and removed this from our window. receiving duplicate ack. Future implementation handle this.
+      logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "receiving duplicate or lost ack\n");
       return 0;
       // no new data ack.
+   }
+   if(Window->Head->m_StartSeqNumber == AckValue){
+// we have already sent this data looks like it is lost..
+        //printf("received ack of old seq. Looks our packet has been lost.\n");
+        logger(LOG_TCP_WINDOW, LOG_LEVEL_CRITICAL, "received ack of old seq. Looks our packet has been lost.\n");
+        if(Window->Head != NULL) {
+           logger(LOG_TCP_WINDOW, LOG_LEVEL_CRITICAL, "Next packet in window is of %u to %u\n", Window->Head->m_StartSeqNumber, Window->Head->m_EndSeqNumber);
+        }
+        else{
+           //printf(" window is null now. This is expected if we have no new data\n");
+        }
    }
    if(Window->Last->m_EndSeqNumber < AckValue) {
       // not possible but ok what can be done now.
    }
    struct SendSeqPair *temp = NULL;
    struct SendSeqPair *head = Window->Head;
-   while(head && (head->m_EndSeqNumber < AckValue)) {
+   //printf(" next expect ack is %u\n", head->m_EndSeqNumber);
+   while(head && (head->m_EndSeqNumber <= AckValue)) {
       temp = head;
       head = head->Next;
       Window->CurrentSize -= (temp->m_EndSeqNumber - temp->m_StartSeqNumber);
       rte_pktmbuf_free(temp->m_mbuf);
+      //printf("removing form send window till %u now next is", temp->m_EndSeqNumber);
+      logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "removing form send window till %u now next is", temp->m_EndSeqNumber);
+      if(head) {
+         char buf[1024];
+         DumpMbufToBuf(head->m_mbuf, buf, 1023);
+         logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, " %u   %s\n", head->m_StartSeqNumber, buf);
+   struct tcp_hdr *ptcphdr2 = (struct tcp_hdr *) ( rte_pktmbuf_mtod(head->m_mbuf, unsigned char *) + 
+         sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr)); 
+         uint32_t seq = ntohl(ptcphdr2->sent_seq);
+         uint16_t src_port = ntohl(ptcphdr2->src_port);
+   struct tcp_hdr *ptcphdr3 = (struct tcp_hdr *) ( rte_pktmbuf_mtod(head->m_mbuf, unsigned char *) + 20); 
+         uint32_t seq2 = ntohl(ptcphdr3->sent_seq);
+         uint16_t src_port2 = ntohl(ptcphdr2->src_port);
+         logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, " mbuf next is %u or %u port = %u or %u %p\n", seq, seq2, src_port, src_port2, head->m_mbuf);
+      }
       free(temp);
    }
    if(head == NULL) {
@@ -235,6 +289,10 @@ AdjustSendWindow(struct tcb *ptcb, uint32_t AckValue)
       logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "stopting rto timer. All send.\n");
    }
    Window->Head = head;
+   struct tcp_hdr *ptcphdr4 = (struct tcp_hdr *) ( rte_pktmbuf_mtod(Window->Head->m_mbuf, unsigned char *) + 
+         sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr)); 
+   uint32_t seq = ntohl(ptcphdr4->sent_seq);
+   logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "delete confirming new added pair head mbuf is %u %p\n", seq, Window->Head->m_mbuf);
    return 1;
 }
 
@@ -242,15 +300,22 @@ AdjustSendWindow(struct tcb *ptcb, uint32_t AckValue)
 int
 PushDataToSendWindow(struct tcb *ptcb, struct rte_mbuf* mbuf, uint32_t StartSeq, uint32_t EndSeq, int data_len)
 {
+   uint32_t seq = GetSeqFromMbuf(mbuf);
+   char buf[1024];
+   DumpMbufToBuf(mbuf, buf, 1023);
+   logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "new added pair mbuf next is %u %p  %s\n", seq, mbuf, buf);
    SendWindow *Window = ptcb->SendWindow;
    logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "starting rto timer\n");
-   ptcb->rto_timer = 0; // start the timer, 0 is the first value, now we have somthing which should be acked
+   logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "adding new pair in send window from %u to %u\n", StartSeq, EndSeq);
+   if(ptcb->rto_timer < 0) {
+        ptcb->rto_timer = 0; // start the timer, 0 is the first value, now we have somthing which should be acked
+   }
    struct SendSeqPair *temp = (struct SendSeqPair *)malloc(sizeof (struct SendSeqPair));
    temp->m_StartSeqNumber = StartSeq;
    temp->m_EndSeqNumber = EndSeq;
    temp->m_DataLen = data_len;
    temp->Next = NULL;
-   rte_pktmbuf_refcnt_update(mbuf, 1);
+   rte_pktmbuf_refcnt_update(mbuf, 1); 
    temp->m_mbuf = mbuf;
    if(Window->Head == NULL) {
       assert(Window->Last == NULL);
@@ -263,6 +328,10 @@ PushDataToSendWindow(struct tcb *ptcb, struct rte_mbuf* mbuf, uint32_t StartSeq,
       Window->Last = temp;
    }
    Window->CurrentSize += (EndSeq - StartSeq);
+   struct tcp_hdr *ptcphdr2 = (struct tcp_hdr *) ( rte_pktmbuf_mtod(Window->Head->m_mbuf, unsigned char *) + 
+         sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr)); 
+   seq = ntohl(ptcphdr2->sent_seq);
+   logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "confirming new added pair head mbuf is %u %p\n", seq, Window->Head->m_mbuf);
    return 0;
 } 
 

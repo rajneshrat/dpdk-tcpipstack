@@ -75,7 +75,20 @@ uint8_t add_timestamp_option(struct rte_mbuf *mbuf, uint32_t value, uint32_t ech
 int
 RetransmitPacket(struct rte_mbuf* mbuf, struct tcb *ptcb, int data_len)
 {
-   struct tcp_hdr *ptcphdr = (struct tcp_hdr *)rte_pktmbuf_mtod(mbuf, struct tcp_hdr *);
+   struct tcp_hdr *ptcphdr = NULL;
+   if(mbuf->udata64 & 0x4) {
+      logger(LOG_TCP, LOG_LEVEL_NORMAL, "ehter and ip hdr availanle for %p\n", mbuf);
+        ptcphdr = (struct tcp_hdr *) ( rte_pktmbuf_mtod(mbuf, unsigned char *) + 
+         sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr)); 
+   }
+   else{ // only ip hdr available.
+      assert(mbuf->udata64 & 0x2);
+      logger(LOG_TCP, LOG_LEVEL_NORMAL, "only ip hdr availanle for %p\n", mbuf);
+        ptcphdr = (struct tcp_hdr *) ( rte_pktmbuf_mtod(mbuf, unsigned char *) + 
+         sizeof(struct ipv4_hdr) ); 
+   }
+   logger(LOG_TCP, LOG_LEVEL_NORMAL, "retransmiting tcp packet %p with seq %u for port %u -- %u\n", mbuf, ntohl(ptcphdr->sent_seq), ntohs(ptcphdr->src_port), ntohs(ptcphdr->dst_port));
+   //struct tcp_hdr *ptcphdr = (struct tcp_hdr *)rte_pktmbuf_mtod(mbuf, struct tcp_hdr *);
    ip_out(ptcb, mbuf, ptcphdr, data_len); 
    return 0;
 }
@@ -88,7 +101,7 @@ void reflect_reset(struct ipv4_hdr *ip_hdr, struct tcp_hdr *t_hdr)
 
 void send_reset(struct ipv4_hdr *ip_hdr, struct tcp_hdr *t_hdr)
 {
-   printf("sending reset\n");
+   //printf("sending reset\n");
    logger(LOG_TCP, LOG_LEVEL_CRITICAL, "sending reset\n");
    struct rte_mbuf *mbuf = get_mbuf();
    //printf("head room = %d\n", rte_pktmbuf_headroom(mbuf));
@@ -133,7 +146,7 @@ void send_reset(struct ipv4_hdr *ip_hdr, struct tcp_hdr *t_hdr)
 
 void sendtcpdata(struct tcb *ptcb, unsigned char *data, int len)
 {
-   printf("Sending tcp data\n");
+   //printf("Sending tcp data\n");
    static int counter_id = -1;
    if(counter_id == -1) {
       counter_id = create_counter("tcp_sent");
@@ -180,7 +193,10 @@ void sendtcpdata(struct tcb *ptcb, unsigned char *data, int len)
   // fflush(stdout);
    logger(LOG_TCP, NORMAL, "[SENDING TCP PACKET] sending tcp packet seq %u ack %u and datalen %u for tcb %u\n", ntohl(ptcphdr->sent_seq), ntohl(ptcphdr->recv_ack), data_len, ptcb->identifier);
    // push the mbuf in send_window unacknowledged data and increase the refrence count of this segment also start the rto timer for this tcb.
-   PushDataToSendWindow(ptcb, mbuf, ntohl(ptcphdr->sent_seq), ptcb->next_seq, data_len);  
+   if(data_len > 0) {
+      // no need to put only ack packet in send window. as this is used only for retransmission logic and so only packet with data is important here.
+        PushDataToSendWindow(ptcb, mbuf, ntohl(ptcphdr->sent_seq), ptcb->next_seq, data_len);  
+   }
    ip_out(ptcb, mbuf, ptcphdr, data_len); 
 }
 /*
