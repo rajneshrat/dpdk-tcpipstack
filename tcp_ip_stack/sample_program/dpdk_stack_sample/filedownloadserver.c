@@ -60,13 +60,17 @@ void respond(int connfd)
                     while (fgets(buf,1000,  fd)!=NULL){
                         logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "sending file\n");
                         logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "sending %s\n", buf);
-                        socket_send(connfd, (const unsigned char*)buf, strlen(buf));
+                        while(socket_send(connfd, (const unsigned char*)buf, strlen(buf)) < 0) {
+                            printf("socket fail to send. waiting\n");
+                            sleep(1);
+                        }
                     }
              }
              else {   
                 socket_send(connfd, (const unsigned char*) "HTTP/1.0 404 Not Found\n", 23); //FILE NOT FOUND
                 logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "no file found\n");       
              }
+             printf("Successfully send file\n");
          }
      }
 

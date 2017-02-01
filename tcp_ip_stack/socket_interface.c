@@ -142,13 +142,14 @@ socket_send(int ser_id, const unsigned char *message, int len)
    Msg->m_Msg_Type = SEND_DATA;
    memcpy(Msg->m_Data, message, len);
    if (rte_ring_enqueue(ptcb->tcb_socket_ring_send, Msg) < 0) {
-      logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "Failed to send message - message discarded\n");
+      logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "Failed to send message ring enque socket to tcb - message discarded\n");
       static int counter_id = -1;
       if(counter_id == -1) {
          counter_id = create_counter("socket_sent_failed");
       }
       counter_inc(counter_id, len);
       rte_mempool_put(buffer_message_pool, Msg);
+      return -1;
    }
    else {
         static int counter_id = -1;
@@ -157,6 +158,7 @@ socket_send(int ser_id, const unsigned char *message, int len)
         }
         counter_inc(counter_id, len);
         logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "****** Enqued len %d and identifier %d data %s\n", Msg->m_Len, Msg->m_Identifier, Msg->m_Data);
+        return Msg->m_Len;
    }
   // sendtcppacket(ptcb, mbuf, message, len);
   // ptcb->send_data(message, len); 
@@ -233,8 +235,9 @@ check_socket_out_queue(void)
          ptcb->state = SYN_SENT; 
       }
       if(msg->m_Msg_Type == SEND_DATA) {
-         FILE *fp = fopen(DATA_SEND_DEBUG_FILE, "a");
-         fprintf(fp, "****** Received len %d and identifier %d and data %s\n", msg->m_Len, msg->m_Identifier, msg->m_Data);
+        // FILE *fp = fopen(DATA_SEND_DEBUG_FILE, "a");
+         //fprintf(fp, "****** Received len %d and identifier %d and data %s\n", msg->m_Len, msg->m_Identifier, msg->m_Data);
+         logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "****** Received len %d and identifier %d and data %s\n", msg->m_Len, msg->m_Identifier, msg->m_Data);
          memcpy(message, msg->m_Data, msg->m_Len);
      
          temp = get_tcb_by_identifier(msg->m_Identifier);
@@ -246,8 +249,8 @@ check_socket_out_queue(void)
          ptcb->tcp_flags = TCP_FLAG_ACK; 
          message[msg->m_Len] = '\n' ; // this is only for debugging;
 
-         fprintf(fp, "sending data to tcp %s\n", message);
-         fclose(fp);
+        // fprintf(fp, "sending data to tcp %s\n", message);
+        // fclose(fp);
          sendtcpdata(ptcb, message, msg->m_Len);
       }
       rte_mempool_put(buffer_message_pool, msg);
@@ -303,7 +306,7 @@ int socket_connect(int identifier, struct sock_addr *client_addr)
    Msg->m_Identifier = identifier;
    Msg->m_Msg_Type = CONNECTION_OPEN;
    if (rte_ring_enqueue(ptcb->tcb_socket_ring_send, Msg) < 0) {
-      logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "Failed to send message - message discarded\n");
+      logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "Failed to send message  connect - message discarded\n");
       rte_mempool_put(buffer_message_pool, Msg);
    }
    ptcb->ipv4_src = htonl(client_addr->ip); 
@@ -351,7 +354,7 @@ socket_close(int identifier)
    Msg->m_Identifier = identifier;
    Msg->m_Msg_Type = SOCKET_CLOSE;
    if (rte_ring_enqueue(ptcb->tcb_socket_ring_send, Msg) < 0) {
-      logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "Failed to send message - message discarded\n");
+      logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "Failed to send message socket close - message discarded\n");
       rte_mempool_put(buffer_message_pool, Msg);
    }
  //  remove_tcb(identifier);

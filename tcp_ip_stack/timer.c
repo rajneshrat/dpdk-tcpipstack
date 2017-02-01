@@ -40,7 +40,7 @@ static __inline__ unsigned long long get_time_sec(void)
 void DoTimer(void)
 {
    static unsigned long long time_last_usec = 0;
-   unsigned long long time_now_usec = get_time_msec();
+   unsigned long long time_now_usec = get_time_sec();
    if(time_now_usec > time_last_usec) {
       // this if for all timers which need to be called per micro sec.
    //  printf("1 sec expored %lld %lld\n", time_now, time_last);

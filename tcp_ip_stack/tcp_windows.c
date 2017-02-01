@@ -8,7 +8,7 @@
 
 //static const char *TCB_TO_SOCKET = "TCB_TO_SOCKET";
 static const char *_MSG_POOL = "MSG_POOL";
-const unsigned int pool_size = 1024;
+const unsigned int pool_size = 10024;
 const unsigned int socket_tcb_ring_size = 1024;
 const unsigned int buffer_size = 1500;
 static struct rte_mempool *buffer_message_pool;

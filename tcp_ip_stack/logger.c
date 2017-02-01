@@ -16,7 +16,7 @@ void InitLogger(void)
   // EnableTrace(LOG_TCP_STATE, ALL);
 ////   EnableTrace(LOG_TCB, ALL);
  //  EnableTrace(LOG_TCP_WINDOW, ALL);
-//   EnableTrace(LOG_SOCKET, ALL);
+   EnableTrace(LOG_SOCKET, ALL);
 }
 
 void EnableTrace(FEATURE Feature, TRACE_LEVEL Level)

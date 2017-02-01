@@ -90,7 +90,7 @@
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
 
 #define MBUF_SIZE (MBUF_BUFFER_LEN + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
-#define NB_MBUF   8192
+#define NB_MBUF   8192 * 3
 
 /*
  * RX and TX Prefetch, Host, and Write-back threshold values should be
