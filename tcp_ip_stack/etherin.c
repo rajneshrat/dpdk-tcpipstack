@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include "ip.h"
 #include "arp.h"
+#include "main.h"
 
 int
 ether_in(struct rte_mbuf *mbuf)
@@ -22,7 +23,7 @@ ether_in(struct rte_mbuf *mbuf)
          logger(LOG_ARP, NORMAL, "seen arp packet\n");
          //printf("arp packet\n");
          arp_in(mbuf);
-         rte_pktmbuf_free(mbuf); // don't free here, future work.
+         free_mbuf(mbuf); // don't free here, future work.
          break;
       case ETHER_TYPE_IPv4 : 
          logger(LOG_IP, NORMAL, "seen ip packet\n");
@@ -30,7 +31,7 @@ ether_in(struct rte_mbuf *mbuf)
          ip_in(mbuf);  // no need to free mbuf here, this will be taken here in this function or its calle.
          break; 
       default :
-			rte_pktmbuf_free(mbuf);
+			free_mbuf(mbuf);
    }
    return 0;
 }

@@ -8,6 +8,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <time.h>
+#include <pthread.h>
 
 #include "../../socket_interface.h"
 #include "../../socket_tester.h"
@@ -22,9 +23,11 @@ void respond(int connfd)
 {
     char mesg[99999], *reqline[3], path[99999];
     FILE *  fd;
-    char buf[1001];
+    char buf[1101];
     char *ROOT;
     ROOT = getenv("PWD");
+    printf("starting http responder\n");
+    logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "starting http responder for connfd %d\n", connfd);
 
     memset( (void*)mesg, (int)'\0', 99999 );
     int lines_read = socket_read(connfd, mesg, 4);
@@ -33,10 +36,12 @@ void respond(int connfd)
     reqline[0] = strtok (mesg, " \t\n");
     if ( strncmp(reqline[0], "GET\0", 4)==0 )
     {
+        logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "found http get requesti for %d\n", connfd);
          reqline[1] = strtok (NULL, " \t");
          reqline[2] = strtok (NULL, " \t\n");
          if ( strncmp( reqline[2], "HTTP/1.0", 8)!=0 && strncmp( reqline[2], "HTTP/1.1", 8)!=0 )
          {
+            logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "http bad request for %d\n", connfd);
             socket_send(connfd, (const unsigned char*)"HTTP/1.0 400 Bad Request\n", 25);
          }
          else
@@ -54,25 +59,41 @@ void respond(int connfd)
             // if ( (fd=fopen(path, "w")) != NULL )    //FILE FOUND
              if ( (fd=fopen("/home/1MB", "r")) != NULL )    //FILE FOUND
              {
-                    logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "file opened successfully\n");
+                    logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "file opened successfully for %d\n", connfd);
              //       socket_send(connfd, (const unsigned char*)"HTTP/1.0 200 OK\n\nContent-length: 100\n\n", 38);
                     socket_send(connfd, (const unsigned char*)"HTTP/1.0 200 OK\n\n", 17);
-                    while (fgets(buf,1000,  fd)!=NULL){
-                        logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "sending file\n");
-                        logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "sending %s\n", buf);
-                        while(socket_send(connfd, (const unsigned char*)buf, strlen(buf)) < 0) {
+                    int done = 0;
+                    while(1) {
+                        int len = 0;
+                        while (len <= 1000){
+                           char *str = fgets(buf + len, 100, fd);
+                           if(str == NULL) {
+                                done = 1;
+                                break;
+                           }
+                           len = len + strlen(str); 
+                          // len = len -1;
+                        }
+                        logger(LOG_DATA, LOG_LEVEL_NORMAL, "sending %s of len %d\n", buf, len);
+                        while(socket_send(connfd, (const unsigned char*)buf, len) < 0) {
                             printf("socket fail to send. waiting\n");
                             sleep(1);
+                        }
+                        if(done == 1) {
+                           break;
                         }
                     }
              }
              else {   
                 socket_send(connfd, (const unsigned char*) "HTTP/1.0 404 Not Found\n", 23); //FILE NOT FOUND
-                logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "no file found\n");       
+                logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "no file found for %d\n", connfd);       
              }
              printf("Successfully send file\n");
          }
      }
+    logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "closing http responder for %d\n", connfd);
+     printf("closing socket\n");
+      socket_close(connfd);
 
 /*
     rcvd=recv(clients[n], mesg, 99999, 0);
@@ -123,6 +144,15 @@ void respond(int connfd)
 char ip[4] = {127,0,0,1};
 int sample1(int, uint8_t*);
 int sample2(int, uint8_t*);
+void *DoRespond(void *test);
+void *DoRespond(void *test)
+{
+   int connfd = *((int *) test);
+    respond(connfd);
+    free(test);
+    return NULL;
+
+}
 int sample1(int port, uint8_t *ip)
 {
    // this provides apache server file download functionality.
@@ -146,10 +176,15 @@ int sample1(int port, uint8_t *ip)
    socket_bind(fd, &addr);
    socket_listen(fd, 5);
    struct sock_addr client;
+   pthread_t thread_id = 0;
 
-    int connfd = socket_accept(fd, &client);
+   while(1) {
+      int *connfd = malloc(sizeof(int));
+    *connfd = socket_accept(fd, &client);
+      pthread_create(&thread_id, NULL, DoRespond, connfd); 
     logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "connection accepted\n");
-    respond(connfd);
+   // respond(connfd);
+   }
     return 0;
 }
 int sample2(int port, uint8_t *ip)

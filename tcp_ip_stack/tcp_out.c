@@ -15,6 +15,7 @@
 #include "main.h"
 #include "tcp_out.h"
 #include "ip.h"
+#include "timer.h"
 
 uint8_t add_mss_option(struct rte_mbuf *mbuf, uint16_t mss_value)
 {
@@ -34,7 +35,7 @@ uint8_t add_winscale_option(struct rte_mbuf *mbuf, uint8_t value)
    return 3;
 }
 
-uint8_t add_tcp_data(struct rte_mbuf *mbuf, unsigned char *data, uint8_t len)
+int add_tcp_data(struct rte_mbuf *mbuf, unsigned char *data, int len)
 {
    //char *src = (char *)rte_pktmbuf_prepend (mbuf, len);
    if((MBUF_BUFFER_LEN - rte_pktmbuf_headroom(mbuf) - rte_pktmbuf_tailroom(mbuf)) < len) {
@@ -154,9 +155,9 @@ void sendtcpdata(struct tcb *ptcb, unsigned char *data, int len)
    counter_inc(counter_id, len);
    //uint8_t tcp_len = 0x50 + add_mss_option(mbuf, 1300);// + add_winscale_option(mbuf, 7);
    struct rte_mbuf *mbuf = get_mbuf(); // remove mbuf from parameters.
-   uint8_t data_len = add_tcp_data(mbuf, data, len);
-   uint8_t option_len = 0;//add_winscale_option(mbuf, 7) + add_mss_option(mbuf, 1300) + add_timestamp_option(mbuf, 203032, 0);
-   uint8_t tcp_len = 20 + option_len;
+   int data_len = add_tcp_data(mbuf, data, len);
+   int option_len = 0;//add_winscale_option(mbuf, 7) + add_mss_option(mbuf, 1300) + add_timestamp_option(mbuf, 203032, 0);
+   int tcp_len = 20 + option_len;
    uint8_t pad = (tcp_len%4) ? 4 - (tcp_len % 4): 0;
    tcp_len += pad;
    logger(LOG_TCP, NORMAL, "padding option %d for tcb %u\n",  pad, ptcb->identifier); 
@@ -174,15 +175,19 @@ void sendtcpdata(struct tcb *ptcb, unsigned char *data, int len)
    ptcphdr->dst_port = htons(ptcb->sport);
    ptcphdr->sent_seq = htonl(ptcb->next_seq);
    ptcb->next_seq += data_len;
-   if(((ptcb->tcp_flags & TCP_FLAG_SYN) == TCP_FLAG_SYN) || ((ptcb->tcp_flags & TCP_FLAG_FIN) == TCP_FLAG_FIN)) {
-      logger(LOG_TCP, NORMAL, "Increasing seq number by one for flag syn or fin for tcb %u\n", ptcb->identifier);
+   if((ptcb->tcp_flags & TCP_FLAG_SYN) == TCP_FLAG_SYN) {
+      logger(LOG_TCP, NORMAL, "Increasing seq number by one for syn for tcb %u\n", ptcb->identifier);
       ptcb->next_seq += 1;
    }
-   logger(LOG_TCP, LOG_LEVEL_NORMAL, "Next seq number is %u flags %u for tcb %u\n", ptcb->next_seq, ptcb->tcp_flags, ptcb->identifier);
+   if((ptcb->tcp_flags & TCP_FLAG_FIN) == TCP_FLAG_FIN) {
+      logger(LOG_TCP, NORMAL, "Increasing seq number by one for fin for tcb %u\n", ptcb->identifier);
+      ptcb->next_seq += 1;
+   }
+   logger(LOG_TCP, LOG_LEVEL_NORMAL, "Next seq number is %u flags %x for tcb %u\n", ptcb->next_seq, ptcb->tcp_flags, ptcb->identifier);
    ptcphdr->recv_ack = htonl(ptcb->ack);
    ptcphdr->data_off = tcp_len;
    ptcphdr->tcp_flags =  ptcb->tcp_flags;
-   ptcphdr->rx_win = 12000;
+   ptcphdr->rx_win = 0xffff;
    ptcphdr->cksum = 0x0000;
    ptcphdr->tcp_urp = 0; 
 
@@ -197,6 +202,8 @@ void sendtcpdata(struct tcb *ptcb, unsigned char *data, int len)
       // no need to put only ack packet in send window. as this is used only for retransmission logic and so only packet with data is important here.
         PushDataToSendWindow(ptcb, mbuf, ntohl(ptcphdr->sent_seq), ptcb->next_seq, data_len);  
    }
+   uint64_t time_u = get_time_usec();
+   logger(LOG_TIME, LOG_LEVEL_NORMAL, "Sending mbuf %p at time %u in %s.\n", mbuf, time_u, __FUNCTION__);
    ip_out(ptcb, mbuf, ptcphdr, data_len); 
 }
 /*

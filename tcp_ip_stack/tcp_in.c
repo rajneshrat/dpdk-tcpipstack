@@ -35,7 +35,7 @@ int tcp_in(struct rte_mbuf *mbuf)
    logger(LOG_TCP, NORMAL, "received tcp packet\n");
    //calculate tcp checksum.
    if(0) {
-      rte_pktmbuf_free(mbuf);
+      free_mbuf(mbuf);
       ++tcpchecksumerror;
       return -1;
    }  
@@ -46,13 +46,13 @@ int tcp_in(struct rte_mbuf *mbuf)
    ptcb = findtcb(ptcphdr, hdr);
    if(ptcb == NULL) {
       ++tcpnopcb;
-      rte_pktmbuf_free(mbuf);
+      free_mbuf(mbuf);
       logger(LOG_TCP, CRITICAL, "found null tcb\n");
       send_reset(hdr, ptcphdr);
       return -1;
    }
    if((ptcb->state == LISTENING) && !(ptcphdr->tcp_flags & TCP_FLAG_SYN)) {
-      rte_pktmbuf_free(mbuf);
+      free_mbuf(mbuf);
       send_reset(hdr, ptcphdr);
       logger(LOG_TCP, CRITICAL, "Ignoring non syn flag for listen tcb %u\n", ptcb->identifier);
       return 0;
@@ -70,12 +70,12 @@ int tcp_in(struct rte_mbuf *mbuf)
       // remove the pair from send window and if all are done adjust the rto timer.
       AdjustSendWindow(ptcb, ntohl(ptcphdr->recv_ack));
       tcpswitch[ptcb->state](ptcb, ptcphdr, hdr, mbuf); // this function will take care mbuf, no need to free it now.
-         //rte_pktmbuf_free(mbuf) ;// higher layer let decide this
+         //free_mbuf(mbuf) ;// higher layer let decide this
       // need to fix check fro
       //(tcpswitch[1])(ptcb, mbuf);
    }
    else {
-        rte_pktmbuf_free(mbuf);
+        free_mbuf(mbuf);
    //   logger(TCP, NORMAL, "sending syn-ack packet\n");
      // sendsynack(ptcb);
    // send ack future work

@@ -24,7 +24,7 @@ struct _ip_send_queue_ {
 };
 
 struct _ip_send_queue_ ip_send_queue;
-int ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf, struct tcp_hdr *ptcphdr, uint8_t data_len);
+int ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf, struct tcp_hdr *ptcphdr, int data_len);
 uint16_t calculate_checksum(unsigned char *data, int len);
 int ip_in(struct rte_mbuf *mbuf);
 

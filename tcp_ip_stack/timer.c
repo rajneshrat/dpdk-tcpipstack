@@ -23,7 +23,7 @@ static __inline__ unsigned long long get_time_msec(void)
    return time;
 }
 
-static __inline__ unsigned long long get_time_usec(void)
+unsigned long long get_time_usec(void)
 {
     unsigned long long time = rdtsc();
    time = (time / (2.2 *100)); 

@@ -13,7 +13,7 @@
 #include "tcp_windows.h"
 #include "socket_interface.h"
 
-#define TOTAL_TCBS 10
+#define TOTAL_TCBS 20000 
 pthread_mutex_t tcb_alloc_mutex;
 extern const unsigned int socket_tcb_ring_size ;
 const unsigned int tcb_socket_ring_size = 1024;
@@ -46,21 +46,30 @@ struct tcb* alloc_tcb(uint16_t MaxWindSize, uint16_t CurrentWindSize)
    memset(ptcb, 0, sizeof(struct tcb));
    ptcb->identifier = IdentifierCount++;
    ptcb->need_ack_now = 0;
-   ptcb->rto_value = 2;  // need to fix this.
+   ptcb->rto_value = 20;  // need to fix this.
    ptcb->rto_timer = -1; // negative idicates it is not started.
-   ptcb->m_TcbWaitingOnAccept = NULL;
+   ptcb->listen_queue_max = 5;
+   ptcb->listen_queue_front = 0;
+   ptcb->listen_queue_rare = 0;
+   int i;
+   for(i=0;i<ptcb->listen_queue_max; i++) {
+       ptcb->newpTcbOnAccept[i] = NULL;
+   }
+   ptcb->m_TcbWaitingOnAccept= NULL;
    sprintf(ptcb->TCB_TO_SOCKET_RING_NAME,"TtoS%d", ptcb->identifier);
    sprintf(ptcb->SOCKET_TO_TCB_RING_NAME,"StoT%d", ptcb->identifier);
 // assert if size crosses of buffer ring name.
    ptcb->socket_tcb_ring_send = rte_ring_create(ptcb->TCB_TO_SOCKET_RING_NAME, socket_tcb_ring_size, SOCKET_ID_ANY, 0);
    ptcb->socket_tcb_ring_recv = rte_ring_lookup(ptcb->TCB_TO_SOCKET_RING_NAME);
    if(ptcb->socket_tcb_ring_recv == NULL) {
+      assert(0);
       //printf ("ERROR **** Failed to set socket to tcb ring recv.\n");
    }
    else {
       //printf("Socket tcb ring recv side OK. Ring Name %s\n", ptcb->TCB_TO_SOCKET_RING_NAME);
    }
    if(ptcb->socket_tcb_ring_send == NULL) {
+      assert(0);
       //printf ("ERROR **** Failed to set socket to tcb ring send side.\n");
    }
    else {
@@ -69,6 +78,7 @@ struct tcb* alloc_tcb(uint16_t MaxWindSize, uint16_t CurrentWindSize)
    ptcb->tcb_socket_ring_send = rte_ring_create(ptcb->SOCKET_TO_TCB_RING_NAME, tcb_socket_ring_size, SOCKET_ID_ANY, 0);
    if(ptcb->tcb_socket_ring_send == NULL) {
       //printf ("ERROR **** Failed to set tcb to socket ring send side.\n");
+      assert(0);
       //ASSERT(0);
    }
    else {
@@ -77,7 +87,7 @@ struct tcb* alloc_tcb(uint16_t MaxWindSize, uint16_t CurrentWindSize)
    ptcb->tcb_socket_ring_recv = rte_ring_lookup(ptcb->SOCKET_TO_TCB_RING_NAME);
    if(ptcb->tcb_socket_ring_recv == NULL) {
       //printf ("ERROR **** Failed to set tcb to scoket ring recv side. Ring Name %s\n", ptcb->SOCKET_TO_TCB_RING_NAME );
-      //assert(0);
+      assert(0);
    }
    else {
       //printf("Socket tcb ring send side OK\n");
@@ -85,12 +95,13 @@ struct tcb* alloc_tcb(uint16_t MaxWindSize, uint16_t CurrentWindSize)
    ptcb->RecvWindow = AllocReceiveWindow(MaxWindSize, CurrentWindSize);
    ptcb->SendWindow = AllocSendWindow(MaxWindSize, CurrentWindSize);
    pthread_mutex_lock(&tcb_alloc_mutex); // change name of lock to other.
-   // lock is to safe ntcb array as it is accessed from other thread alos.
+   // lock is to safe ntcb array as it is accessed from other thread alos. This fucntion is called from mulitple threads.
    assert(Ntcb < TOTAL_TCBS);
    tcbs[Ntcb] = ptcb;
    //printf("adding tcb %p at %d with identifier %d\n", ptcb, Ntcb, ptcb->identifier);
    Ntcb++;
    pthread_mutex_unlock(&tcb_alloc_mutex);
+   logger(LOG_SOCKET, LOG_LEVEL_NORMAL, " allocating new tcb %u with identifier %u.", ptcb, ptcb->identifier);
    return ptcb;
 }
 
@@ -170,6 +181,7 @@ int remove_tcb(int identifier)
          tcbs[i] = NULL;
       }
    }
+   free(ptcb);
    return 0;
 }
 

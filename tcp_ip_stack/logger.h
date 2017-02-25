@@ -13,7 +13,10 @@ typedef enum {
    LOG_TCP_STATE,
    LOG_TCP_WINDOW,
    LOG_SOCKET,
+   LOG_DATA,
+   LOG_TIME,
    LOG_TCB,
+   LOG_TRACK_MBUF,
    LOG_TOTAL_FEATURE,
 
 }FEATURE;

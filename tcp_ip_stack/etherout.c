@@ -10,6 +10,7 @@
 #include "main.h"
 #include "debug.h"
 #include "logger.h"
+#include "timer.h"
 
 static const char *_MSG_POOL = "MSG_POOL_IP_ETHER_PACKETS";
 static const unsigned int pool_size = 1024;
@@ -132,6 +133,8 @@ EnqueueMBuf(struct rte_mbuf *mbuf)
       return -1;
    }
    *Msg = mbuf;
+   uint64_t time_u = get_time_usec();
+   logger(LOG_TIME, LOG_LEVEL_NORMAL, "Enquing mbuf %p at time %u in enqueue mbuf.\n", mbuf, time_u);
    if (rte_ring_enqueue(ip_to_ether_ring_send, Msg) < 0) {
       //printf("Failed to send rte_mbuf message - message discarded\n");
       rte_mempool_put(buffer_message_pool, Msg);
@@ -153,6 +156,8 @@ CheckEtherOutRing(void)
       return 0;
    }
    mbuf = *Msg;
+   uint64_t time_u = get_time_usec();
+   logger(LOG_TIME, LOG_LEVEL_NORMAL, "Dequeued  mbuf %p at time %u in %s.\n", mbuf, time_u, __FUNCTION__);
    logger(LOG_ETHER, LOG_LEVEL_NORMAL, "Mbuf received = %p\n", mbuf);
    rte_mempool_put(buffer_message_pool, Msg);
    struct ipv4_hdr *hdr = NULL;

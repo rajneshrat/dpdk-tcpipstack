@@ -14,6 +14,8 @@ int DumpTcpHdrToBuf(struct tcp_hdr *hdr, char *buf)
     int len = sprintf(buf, " source port %u\n", ntohs(hdr->src_port));
     len += sprintf(buf + len, " dest port %u\n", ntohs(hdr->dst_port));
     len += sprintf(buf + len, " seq no %u\n", ntohl(hdr->sent_seq));
+   int tcp_len = (hdr->data_off >> 4) * 4;
+    len += sprintf(buf + len, " tcp len %u\n", tcp_len);
     return len;
 }
 
@@ -29,8 +31,12 @@ void DumpIpHdr(struct ipv4_hdr *hdr)
 int DumpIpHdrToBuf(struct ipv4_hdr *hdr, char *buf)
 {
     char ip_add[1024];
+   int ip_header_len = ((hdr->version_ihl) & (0x0f)) * 4;
+   int tcp_len = 20;
+   int datalen = ntohs(hdr->total_length) - ip_header_len - tcp_len;
+   int len = sprintf(buf, " data len %u\n", (datalen));
     print_add_in_buf(ntohl(hdr->src_addr), ip_add);
-    int len = sprintf(buf, " source ip %u %s\n", ntohl(hdr->src_addr), ip_add);
+    len += sprintf(buf + len, " source ip %u %s\n", ntohl(hdr->src_addr), ip_add);
     print_add_in_buf(ntohl(hdr->dst_addr), ip_add);
     len += sprintf(buf + len, " dest ip %u %s\n", ntohl(hdr->dst_addr), ip_add);
     return len;

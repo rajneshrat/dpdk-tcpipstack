@@ -13,6 +13,8 @@
 #include "tcp_in.h"
 #include "etherout.h"
 #include "debug.h"
+#include "timer.h"
+#include "main.h"
 
 int
 ip_in(struct rte_mbuf *mbuf)
@@ -33,7 +35,7 @@ ip_in(struct rte_mbuf *mbuf)
         break;
     default:
         //printf("unkonwn layer 4 packet\n");
-		rte_pktmbuf_free(mbuf);
+		free_mbuf(mbuf);
         break ;
     }
    return 0;
@@ -58,7 +60,7 @@ uint16_t calculate_checksum(unsigned char *data, int len)
 
 
 int
-ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf, struct tcp_hdr *ptcphdr, uint8_t data_len)
+ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf, struct tcp_hdr *ptcphdr, int data_len)
 {
     //printf("head room3 = %d\n", rte_pktmbuf_headroom(mbuf));
 //    struct tcp_hdr *ptcphdr =  rte_pktmbuf_mtod(mbuf, struct tcp_hdr *);  
@@ -120,6 +122,8 @@ ip_out(struct tcb *ptcb, struct rte_mbuf *mbuf, struct tcp_hdr *ptcphdr, uint8_t
     //DumpTcb(ptcb);
     //DumpIpHdr(hdr);
 
+   uint64_t time_u = get_time_usec();
+   logger(LOG_TIME, LOG_LEVEL_NORMAL, "Enquing mbuf %p at time %u in ip out.\n", mbuf, time_u);
     EnqueueMBuf(mbuf);
   //  struct rte_mbuf **pbuf;
 //    *pbuf = mbuf;

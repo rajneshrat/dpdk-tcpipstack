@@ -19,7 +19,7 @@ tcp_syn_sent(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, 
 // release semphone waiting at connect.
 // we will come here only when we received syn-ack for our syn.
    logger(LOG_TCP, LOG_LEVEL_NORMAL, "In tcp syn sent state for tcb %u.\n", ptcb->identifier);
-   rte_pktmbuf_free(mbuf);
+   free_mbuf(mbuf);
    ptcb->state = TCP_ESTABLISHED;
 //   ptcb->dport = ptcb->dport;
    ptcb->dport = htons(ptcphdr->dst_port);
@@ -52,7 +52,7 @@ tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, s
    logger(LOG_TCP_STATE, LOG_LEVEL_NORMAL, "tcp syn recv state\n");
    if(ntohl(ptcphdr->recv_ack) != ptcb->next_seq) {
       logger(LOG_TCP, LOG_LEVEL_CRITICAL, "dropping this packet, the ack %u not matching with our syn ack seq %u.\n", ntohl(ptcphdr->recv_ack), ptcb->next_seq);
-      rte_pktmbuf_free(mbuf);
+      free_mbuf(mbuf);
       reflect_reset(iphdr, ptcphdr);
       //clean the tcb also. future work.
       return -1;
@@ -80,11 +80,11 @@ tcp_syn_rcv(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, s
       logger(LOG_TCP, LOG_LEVEL_CRITICAL, "seen non zero len on ack of threeway handshake. Data len = %u\n", datalen);
       tcp_established(ptcb, ptcphdr, iphdr, mbuf);
    //   logger(LOG_TCP, LOG_LEVEL_CRITICAL, "dropping this packet as we do not expect data with non zero len on ack of threeway handshake. Data len = %u\n", datalen);
-   //   rte_pktmbuf_free(mbuf);
+   //   free_mbuf(mbuf);
    //   reflect_reset(iphdr, ptcphdr);
    }
    else {
-        rte_pktmbuf_free(mbuf);
+        free_mbuf(mbuf);
    }
 // also increase ack for data. future work.
    return 0;
@@ -122,7 +122,7 @@ tcp_established(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphd
      // ptcb->read_buffer_len = datalen;
       //memcpy(ptcb->read_buffer, data_buffer, datalen); 
       if(PushData(mbuf, ptcphdr, datalen, ptcb) < 0) {
-           rte_pktmbuf_free(mbuf);
+           free_mbuf(mbuf);
            mbuf = NULL;
       }
       // this is not needed now. we use queue now.
@@ -152,16 +152,36 @@ tcp_listen(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, st
 {
    logger(LOG_TCP, LOG_LEVEL_NORMAL, "In tcp listen state for tcb %u.\n", ptcb->identifier);
    struct tcb *new_ptcb = NULL;
-   new_ptcb = alloc_tcb(2000, 2000); 
+   new_ptcb = alloc_tcb(4000, 4000); 
    if(new_ptcb == NULL) {
-      logger(LOG_TCP_STATE, LOG_LEVEL_NORMAL, "Null tcb'\n");
-      return 0;
+      logger(LOG_TCP_STATE, LOG_LEVEL_CRITICAL, "Null tcb'\n");
+      return -1;
    }
+   pthread_mutex_lock(&(ptcb->listen_queue_mutex));
+   int next_index = ptcb->listen_queue_front + 1;
+   if(next_index == ptcb->listen_queue_max) {
+      next_index = 0;
+   }
+   if(next_index == ptcb->listen_queue_rare) {
+      logger(LOG_SOCKET, LOG_LEVEL_CRITICAL, "listen queue is full. ignoring this request.\n");
+      remove_tcb(new_ptcb->identifier);
+      free_mbuf(mbuf);
+      new_ptcb = NULL;
+      mbuf = NULL;
+      pthread_mutex_unlock(&(ptcb->listen_queue_mutex));
+      return -1;
+   }
+   assert(ptcb->newpTcbOnAccept[ptcb->listen_queue_front] == NULL);
+   ptcb->newpTcbOnAccept[ptcb->listen_queue_front] = new_ptcb;
+   ptcb->listen_queue_front = next_index;
+   new_ptcb->m_TcbWaitingOnAccept = ptcb;
+   pthread_mutex_unlock(&(ptcb->listen_queue_mutex));
    logger(LOG_TCP_STATE, LOG_LEVEL_NORMAL, "Tcp listen state\n");
 //   new_ptcb->identifier = 10;  identifier will be given by alloc.
    new_ptcb->state = SYN_RECV;
    new_ptcb->RecvWindow->CurrentSequenceNumber = ntohl(ptcphdr->sent_seq) + 1;
    logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL,  "Setting the CurrentSequenceNumber for ptcb %u to %u\n", ptcb->identifier, new_ptcb->RecvWindow->CurrentSequenceNumber);
+   logger(LOG_TCB, LOG_LEVEL_NORMAL, "setting sport %u dport %u to tcb identifier %u.\n", ptcb->dport, htons(ptcphdr->src_port), new_ptcb->identifier);
    new_ptcb->dport = ptcb->dport;
    new_ptcb->sport = htons(ptcphdr->src_port);
    new_ptcb->ipv4_dst = ptcb->ipv4_dst;
@@ -171,8 +191,8 @@ tcp_listen(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, st
    new_ptcb->next_seq = 1;
    // set src port;
    // set ips.
-   ptcb->newpTcbOnAccept = new_ptcb;
-   new_ptcb->m_TcbWaitingOnAccept = ptcb;
+   //ptcb->newpTcbOnAccept = new_ptcb;
+   //new_ptcb->m_TcbWaitingOnAccept = ptcb;
    //printf("sending ack\n");
    //sendack(new_ptcb);
    new_ptcb->tcp_flags = TCP_FLAG_SYN | TCP_FLAG_ACK; 
@@ -180,7 +200,7 @@ tcp_listen(struct tcb *ptcb, struct tcp_hdr* ptcphdr, struct ipv4_hdr *iphdr, st
    //    // add tcpflags.
    logger(LOG_TCP_STATE, LOG_LEVEL_NORMAL, "Next seq number is %u flags %u\n", new_ptcb->next_seq, new_ptcb->tcp_flags);
    sendtcpdata(new_ptcb,  NULL, 0);
-   rte_pktmbuf_free(mbuf);
+   free_mbuf(mbuf);
    //sendsynack(new_ptcb);
    //sendsynack(ptcb);
    return 0;
@@ -194,7 +214,7 @@ tcp_closed(struct tcb *ptcb, struct tcp_hdr* tcphdr, struct ipv4_hdr *iphdr, str
   // //printf("tcp_closed called\n");
    (void) tcphdr;
    (void) iphdr;
-   rte_pktmbuf_free(mbuf);
+   free_mbuf(mbuf);
    return 0;
 }
 
@@ -210,7 +230,7 @@ tcp_fin2(struct tcb *ptcb, struct tcp_hdr* tcphdr, struct ipv4_hdr *iphdr, struc
    else {
       ptcb->state = TCP_STATE_FIN_1;
    }
-   rte_pktmbuf_free(mbuf);
+   free_mbuf(mbuf);
    (void) iphdr;
    (void) tcphdr;
    return 0;
@@ -226,7 +246,7 @@ tcp_fin1(struct tcb *ptcb, struct tcp_hdr* tcphdr, struct ipv4_hdr *iphdr, struc
    else {
       ptcb->state = TCP_FIN_2;
    }
-   rte_pktmbuf_free(mbuf);
+   free_mbuf(mbuf);
    (void) iphdr;
    (void) tcphdr;
    return 0;

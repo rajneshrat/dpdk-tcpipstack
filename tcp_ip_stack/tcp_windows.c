@@ -3,6 +3,7 @@
 #include "tcp.h"
 #include "logger.h"
 #include "debug.h"
+#include "main.h"
 
 //static struct rte_ring *socket_tcb_ring_send;
 
@@ -31,7 +32,7 @@ void InitSocketTcbRing(void)
 int DeletePair(struct OutOfSeqPair  *Pair)
 {
    logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "Deleting Seq Pair with Seq No. %u\n", Pair->SequenceNumber);
-   rte_pktmbuf_free(Pair->mbuf);
+   free_mbuf(Pair->mbuf);
    free(Pair);
    return 0;
 }
@@ -159,7 +160,7 @@ int GetData(int identifier, unsigned char *Buffer, uint32_t len)
          int tcp_len = Pair->TcpLen;
          int DataSent = 0;
          if(Pair->Length != 0) {
-            assert((Pair->SequenceNumber + Pair->Length) > Window->CurrentSequenceNumber); // we should have sent this sequence number to socket by now. how come it is  still here. I don't now if there is any scenrio where i will see this. 
+            assert((Pair->SequenceNumber + Pair->Length) >= Window->CurrentSequenceNumber); // we should have sent this sequence number to socket by now. how come it is  still here. I don't now if there is any scenrio where i will see this. 
             char *data =  (char *)(rte_pktmbuf_mtod(mbuf, unsigned char *) + 
                            sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr) +  
                                tcp_len);
@@ -203,7 +204,7 @@ GetFirstUnAckedPacket(struct tcb *ptcb, int *data_len, struct rte_mbuf **mbuf)
    struct SendSeqPair *temp = Window->Head;
    *data_len = temp->m_DataLen;
    *mbuf = temp->m_mbuf; 
-   rte_pktmbuf_refcnt_update(*mbuf, 1); 
+   update_mbuf_ref(*mbuf, 1); 
    return 0;
 }
 
@@ -265,7 +266,7 @@ AdjustSendWindow(struct tcb *ptcb, uint32_t AckValue)
       temp = head;
       head = head->Next;
       Window->CurrentSize -= (temp->m_EndSeqNumber - temp->m_StartSeqNumber);
-      rte_pktmbuf_free(temp->m_mbuf);
+      free_mbuf(temp->m_mbuf);
       //printf("removing form send window till %u now next is", temp->m_EndSeqNumber);
       logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "removing form send window till %u now next is", temp->m_EndSeqNumber);
       if(head) {
@@ -289,10 +290,12 @@ AdjustSendWindow(struct tcb *ptcb, uint32_t AckValue)
       logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "stopting rto timer. All send.\n");
    }
    Window->Head = head;
-   struct tcp_hdr *ptcphdr4 = (struct tcp_hdr *) ( rte_pktmbuf_mtod(Window->Head->m_mbuf, unsigned char *) + 
-         sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr)); 
-   uint32_t seq = ntohl(ptcphdr4->sent_seq);
-   logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "delete confirming new added pair head mbuf is %u %p\n", seq, Window->Head->m_mbuf);
+   if(head != NULL) {
+      struct tcp_hdr *ptcphdr4 = (struct tcp_hdr *) ( rte_pktmbuf_mtod(Window->Head->m_mbuf, unsigned char *) + 
+            sizeof(struct ipv4_hdr) + sizeof(struct ether_hdr)); 
+      uint32_t seq = ntohl(ptcphdr4->sent_seq);
+      logger(LOG_TCP_WINDOW, LOG_LEVEL_NORMAL, "delete confirming new added pair head mbuf is %u %p\n", seq, Window->Head->m_mbuf);
+   }
    return 1;
 }
 
@@ -315,7 +318,7 @@ PushDataToSendWindow(struct tcb *ptcb, struct rte_mbuf* mbuf, uint32_t StartSeq,
    temp->m_EndSeqNumber = EndSeq;
    temp->m_DataLen = data_len;
    temp->Next = NULL;
-   rte_pktmbuf_refcnt_update(mbuf, 1); 
+   update_mbuf_ref(mbuf, 1); 
    temp->m_mbuf = mbuf;
    if(Window->Head == NULL) {
       assert(Window->Last == NULL);

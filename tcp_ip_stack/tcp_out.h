@@ -12,7 +12,7 @@ void send_reset(struct ipv4_hdr *ip_hdr, struct tcp_hdr *t_hdr);
 void reflect_reset(struct ipv4_hdr *ip_hdr, struct tcp_hdr *t_hdr);
 int RetransmitPacket(struct rte_mbuf* mbuf, struct tcb *ptcb, int length);
 uint8_t add_timestamp_option(struct rte_mbuf *mbuf, uint32_t value, uint32_t echo);
-uint8_t add_tcp_data(struct rte_mbuf *mbuf, unsigned char *data, uint8_t len);
+int add_tcp_data(struct rte_mbuf *mbuf, unsigned char *data, int len);
 uint8_t add_winscale_option(struct rte_mbuf *mbuf, uint8_t value);
 uint8_t add_mss_option(struct rte_mbuf *mbuf, uint16_t mss_value);
 #endif

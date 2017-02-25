@@ -29,9 +29,9 @@ echo 128 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
 
 if [[ $1 -eq "0" ]]
 then
-./build/tcp_stack -c 0xf -n 4 -- -p 0x3 &
+./build/tcp_stack -c 0xf -n 4 -- -p 0x3 
 else
-gdb ./build/tcp_stack -c 0xf -n 4 -- -p 0x3 &
+gdb ./build/tcp_stack -c 0xf -n 4 -- -p 0x3 
 fi
-python ui/ui.py
+#python ui/ui.py
 #./build/tcp_stack -c 0xf -n 4 -- -p 0x1

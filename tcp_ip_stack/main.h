@@ -45,7 +45,10 @@
 int MAIN(int argc, char **argv);
 
 struct rte_mbuf *get_mbuf(void);
+void free_mbuf(struct rte_mbuf *mbuf); 
+uint16_t update_mbuf_ref(struct rte_mbuf *mbuf, int value);
 int GetTotalInterfaces(void);
+int send_mbuf(int port_conf, int port_id, struct rte_mbuf ** mbuf_arr, int num);
 int send_packet_out(struct rte_mbuf *mbuf, int port, int free_mbuf);
 
 #endif /* _MAIN_H_ */

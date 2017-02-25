@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include "tcp.h"
 #include "logger.h"
+#include "timer.h"
 
 enum Msg_Type {
    SOCKET_CLOSE,
@@ -107,17 +108,31 @@ socket_accept(int ser_id, struct sock_addr *client_addr)
       return 0;
       // don't allow multiple accepts hold on same socket.
    }
+   assert(MAX_WAITING_QUEUE > ptcb->listen_queue_max);
+
    pthread_mutex_lock(&(ptcb->mutex));
    ptcb->state = LISTENING;
    ptcb->WaitingOnAccept = 1;
    pthread_cond_wait(&(ptcb->condAccept), &(ptcb->mutex));
-   new_ptcb = ptcb->newpTcbOnAccept;
+   //new_ptcb = ptcb->newpTcbOnAccept;
+
+   pthread_mutex_lock(&(ptcb->listen_queue_mutex));
+   assert(ptcb->listen_queue_front != ptcb->listen_queue_rare);
+   assert(ptcb->newpTcbOnAccept[ptcb->listen_queue_rare] != NULL);
+   new_ptcb = ptcb->newpTcbOnAccept[ptcb->listen_queue_rare];
+   ptcb->newpTcbOnAccept[ptcb->listen_queue_rare] = NULL;
+   ptcb->listen_queue_rare ++;
+   if(ptcb->listen_queue_rare == ptcb->listen_queue_max) {
+      ptcb->listen_queue_rare = 0;
+   }
+   new_ptcb->m_TcbWaitingOnAccept = ptcb;
+   pthread_mutex_unlock(&(ptcb->listen_queue_mutex));
    ptcb->WaitingOnAccept = 0;
+
    pthread_mutex_unlock(&(ptcb->mutex));
-   
+
    return new_ptcb->identifier; 
 }
-
 
 int
 socket_send(int ser_id, const unsigned char *message, int len)
@@ -157,7 +172,8 @@ socket_send(int ser_id, const unsigned char *message, int len)
            counter_id = create_counter("socket_sent");
         }
         counter_inc(counter_id, len);
-        logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "****** Enqued len %d and identifier %d data %s\n", Msg->m_Len, Msg->m_Identifier, Msg->m_Data);
+        uint64_t time_u = get_time_usec();
+        logger(LOG_DATA, LOG_LEVEL_NORMAL, "****** Enqued len %d and identifier %d data %s at %u\n", Msg->m_Len, Msg->m_Identifier, Msg->m_Data, time_u);
         return Msg->m_Len;
    }
   // sendtcppacket(ptcb, mbuf, message, len);
@@ -189,13 +205,11 @@ check_socket_out_queue(void)
          continue;
       }
       int num = rte_ring_dequeue(ptcb->tcb_socket_ring_recv, (void **)&msg);
-      {
-         static int counter_id = -1;
-         if(counter_id == -1) {
-            counter_id = create_counter("buf_ring_deque_call");
-         }
-         counter_inc(counter_id, 1);
+      static int counter_id = -1;
+      if(counter_id == -1) {
+         counter_id = create_counter("buf_ring_deque_call");
       }
+      counter_inc(counter_id, 1);
       if(num < 0) {
          if(ptcb->need_ack_now) {
             logger(LOG_TCP, LOG_LEVEL_NORMAL, "sending immidiate ack for tcb %u\n", ptcb->identifier);
@@ -206,13 +220,13 @@ check_socket_out_queue(void)
          }
          continue;
       }
-      {
-         static int counter_id = -1;
-         if(counter_id == -1) {
-            counter_id = create_counter("buffer_msg_pool_deque");
-         }
-         counter_inc(counter_id, 1);
+      uint64_t time_u = get_time_usec();
+      logger(LOG_TIME, LOG_LEVEL_NORMAL, "Received msg %p at time %u in %s.\n", msg, time_u, __FUNCTION__);
+      static int counter_id2 = -1;
+      if(counter_id2 == -1) {
+         counter_id2 = create_counter("buffer_msg_pool_deque");
       }
+      counter_inc(counter_id2, 1);
       if(msg->m_Msg_Type == SOCKET_CLOSE) {
          temp = get_tcb_by_identifier(msg->m_Identifier);
          if(temp != ptcb) {
@@ -220,8 +234,10 @@ check_socket_out_queue(void)
             assert(0);
       // put assert
          }
+         logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "sending fin to tcb\n", ptcb->identifier);
          ptcb->tcp_flags = TCP_FLAG_ACK | TCP_FLAG_FIN; // no problem in acking
-         ptcb->need_ack_now = 1;
+         sendtcpdata(ptcb, NULL, 0);
+         ptcb->need_ack_now = 0;
     //     sendfin(ptcb);
       }
       if(msg->m_Msg_Type == CONNECTION_OPEN) {
@@ -237,7 +253,7 @@ check_socket_out_queue(void)
       if(msg->m_Msg_Type == SEND_DATA) {
         // FILE *fp = fopen(DATA_SEND_DEBUG_FILE, "a");
          //fprintf(fp, "****** Received len %d and identifier %d and data %s\n", msg->m_Len, msg->m_Identifier, msg->m_Data);
-         logger(LOG_SOCKET, LOG_LEVEL_NORMAL, "****** Received len %d and identifier %d and data %s\n", msg->m_Len, msg->m_Identifier, msg->m_Data);
+         logger(LOG_DATA, LOG_LEVEL_NORMAL, "****** Received len %d and identifier %d and data %s\n", msg->m_Len, msg->m_Identifier, msg->m_Data);
          memcpy(message, msg->m_Data, msg->m_Len);
      
          temp = get_tcb_by_identifier(msg->m_Identifier);
@@ -252,6 +268,7 @@ check_socket_out_queue(void)
         // fprintf(fp, "sending data to tcp %s\n", message);
         // fclose(fp);
          sendtcpdata(ptcb, message, msg->m_Len);
+         ptcb->need_ack_now = 0;
       }
       rte_mempool_put(buffer_message_pool, msg);
    }
@@ -316,6 +333,7 @@ int socket_connect(int identifier, struct sock_addr *client_addr)
    ptcb->next_seq = 1;
    pthread_mutex_lock(&(ptcb->mutex));
    ptcb->WaitingOnConnect = 1;
+   //why this is needed in connect.......
    pthread_cond_wait(&(ptcb->condAccept), &(ptcb->mutex));
    ptcb->WaitingOnConnect = 0;
    pthread_mutex_unlock(&(ptcb->mutex));

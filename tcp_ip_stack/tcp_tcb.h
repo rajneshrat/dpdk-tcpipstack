@@ -8,6 +8,7 @@
 #include <inttypes.h>
 #include <rte_ip.h>
 extern int Ntcb;
+#define MAX_WAITING_QUEUE 100
 struct ReceiveWindow_; // forward declaration to break cyclic dependency.
 // make mac address also part of it.
 extern struct tcb *tcbs[];
@@ -28,7 +29,7 @@ struct tcb
    int WaitingOnRead;
    unsigned char *read_buffer;
    int read_buffer_len;
-   struct tcb *newpTcbOnAccept;
+   struct tcb *newpTcbOnAccept[MAX_WAITING_QUEUE];
    struct tcb *m_TcbWaitingOnAccept;
    uint32_t ipv4_dst;
    uint32_t ipv4_src;
@@ -40,6 +41,10 @@ struct tcb
    struct SendWindow_ *SendWindow;
    TCP_STATE state;
    pthread_mutex_t mutex;
+   pthread_mutex_t listen_queue_mutex;
+   int listen_queue_rare;
+   int listen_queue_front;
+   int listen_queue_max;
    int m_IsSocketTcbRingIntialized;
    struct rte_ring *socket_tcb_ring_send;
    struct rte_ring *socket_tcb_ring_recv;
